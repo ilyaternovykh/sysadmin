@@ -18,7 +18,7 @@ module "yandex_compute_instance" {
   instance_subnet_id = module.yandex_cloud_network.yandex_vpc_subnets[var.zone].subnet_id
   nat                = true
   user-data          = "${file("user-data.yaml")}"
-  ssh-keys           = "ubuntu:${file("~/.ssh/id_ed25519.pub")}"
+  ssh-keys           = "ansible:${file("~/.ssh/id_ed25519.pub")}"
   preemptible        = true
 } 
 
