@@ -8,7 +8,7 @@ module "yandex_cloud_network" {
 module "yandex_compute_instance" {
   source             = "./modules/tf-yc-instance"
   count              = 4
-  name               = "sprint12-${count.index}"
+  name               = "vm-${count.index}"
   zone               = var.zone
   platform           = "standard-v1"
   cores              = 2
@@ -24,7 +24,7 @@ module "yandex_compute_instance" {
 
 module "yandex_compute_instance_s3" {
   source             = "./modules/tf-yc-instance"
-  name               = "sprint12-s3"
+  name               = "vm-s3"
   zone               = var.zone
   platform           = "standard-v1"
   cores              = 2
