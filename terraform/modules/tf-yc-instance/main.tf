@@ -4,6 +4,7 @@ resource "yandex_compute_instance" "vm-1" {
     name = var.name
     zone = var.zone
     platform_id = var.platform
+    allow_stopping_for_update = var.allow_stopping_for_update
 
     # Конфигурация ресурсов:
     # количество процессоров и оперативной памяти

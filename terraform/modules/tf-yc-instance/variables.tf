@@ -72,3 +72,9 @@ variable "preemptible" {
   type        = bool
   default     = false
 }
+
+variable "allow_stopping_for_update" {
+  description = "Allows Terraform to stop the instance in order to update its properties"
+  type        = bool
+  default     = false
+}
