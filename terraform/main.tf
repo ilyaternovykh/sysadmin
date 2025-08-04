@@ -19,7 +19,7 @@ module "yandex_compute_instance" {
   nat                = true
   user-data          = "${file("user-data.yaml")}"
   ssh-keys           = "ansible:${file("~/.ssh/id_ed25519.pub")}"
-  preemptible        = true
+  preemptible        = false
   allow_stopping_for_update = true
 } 
 
@@ -36,6 +36,6 @@ module "yandex_compute_instance_s3" {
   nat                = true
   user-data          = "${file("user-data.yaml")}"
   ssh-keys           = "ansible:${file("~/.ssh/id_ed25519.pub")}"
-  preemptible        = true
+  preemptible        = false
   allow_stopping_for_update = true
 } 
