@@ -1,0 +1,12 @@
+#cloud-config
+
+#groups:
+#  - ansible
+
+users:
+  - default
+  - name: ansible
+    groups: sudo
+    sudo: 'ALL=(ALL) NOPASSWD:ALL'
+    shell: /bin/bash
+    
