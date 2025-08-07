@@ -1,0 +1,3950 @@
+--
+-- PostgreSQL database dump
+--
+
+-- Dumped from database version 14.18 (Ubuntu 14.18-0ubuntu0.22.04.1)
+-- Dumped by pg_dump version 14.18 (Ubuntu 14.18-0ubuntu0.22.04.1)
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Name: mediawiki; Type: SCHEMA; Schema: -; Owner: wikiuser
+--
+
+CREATE SCHEMA mediawiki;
+
+
+ALTER SCHEMA mediawiki OWNER TO wikiuser;
+
+--
+-- Name: us_media_type_enum; Type: TYPE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TYPE mediawiki.us_media_type_enum AS ENUM (
+    'UNKNOWN',
+    'BITMAP',
+    'DRAWING',
+    'AUDIO',
+    'VIDEO',
+    'MULTIMEDIA',
+    'OFFICE',
+    'TEXT',
+    'EXECUTABLE',
+    'ARCHIVE',
+    '3D'
+);
+
+
+ALTER TYPE mediawiki.us_media_type_enum OWNER TO wikiuser;
+
+--
+-- Name: ts2_page_text(); Type: FUNCTION; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE FUNCTION mediawiki.ts2_page_text() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+ BEGIN
+ IF TG_OP = 'INSERT' THEN
+ NEW.textvector = to_tsvector(NEW.old_text);
+ ELSIF NEW.old_text != OLD.old_text THEN
+ NEW.textvector := to_tsvector(NEW.old_text);
+ END IF;
+ RETURN NEW;
+ END;
+ $$;
+
+
+ALTER FUNCTION mediawiki.ts2_page_text() OWNER TO wikiuser;
+
+--
+-- Name: ts2_page_title(); Type: FUNCTION; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE FUNCTION mediawiki.ts2_page_title() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+ BEGIN
+ IF TG_OP = 'INSERT' THEN
+ NEW.titlevector = to_tsvector(REPLACE(NEW.page_title,'/',' '));
+ ELSIF NEW.page_title != OLD.page_title THEN
+ NEW.titlevector := to_tsvector(REPLACE(NEW.page_title,'/',' '));
+ END IF;
+ RETURN NEW;
+ END;
+ $$;
+
+
+ALTER FUNCTION mediawiki.ts2_page_title() OWNER TO wikiuser;
+
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- Name: actor; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.actor (
+    actor_id bigint NOT NULL,
+    actor_user integer,
+    actor_name text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.actor OWNER TO wikiuser;
+
+--
+-- Name: actor_actor_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.actor_actor_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.actor_actor_id_seq OWNER TO wikiuser;
+
+--
+-- Name: actor_actor_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.actor_actor_id_seq OWNED BY mediawiki.actor.actor_id;
+
+
+--
+-- Name: archive; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.archive (
+    ar_id integer NOT NULL,
+    ar_namespace integer DEFAULT 0 NOT NULL,
+    ar_title text DEFAULT ''::text NOT NULL,
+    ar_comment_id bigint NOT NULL,
+    ar_actor bigint NOT NULL,
+    ar_timestamp timestamp with time zone NOT NULL,
+    ar_minor_edit smallint DEFAULT 0 NOT NULL,
+    ar_rev_id integer NOT NULL,
+    ar_deleted smallint DEFAULT 0 NOT NULL,
+    ar_len integer,
+    ar_page_id integer,
+    ar_parent_id integer,
+    ar_sha1 text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.archive OWNER TO wikiuser;
+
+--
+-- Name: archive_ar_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.archive_ar_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.archive_ar_id_seq OWNER TO wikiuser;
+
+--
+-- Name: archive_ar_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.archive_ar_id_seq OWNED BY mediawiki.archive.ar_id;
+
+
+--
+-- Name: block; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.block (
+    bl_id integer NOT NULL,
+    bl_target integer NOT NULL,
+    bl_by_actor bigint NOT NULL,
+    bl_reason_id bigint NOT NULL,
+    bl_timestamp timestamp with time zone NOT NULL,
+    bl_anon_only smallint DEFAULT 0 NOT NULL,
+    bl_create_account smallint DEFAULT 1 NOT NULL,
+    bl_enable_autoblock smallint DEFAULT 1 NOT NULL,
+    bl_expiry timestamp with time zone NOT NULL,
+    bl_deleted smallint DEFAULT 0 NOT NULL,
+    bl_block_email smallint DEFAULT 0 NOT NULL,
+    bl_allow_usertalk smallint DEFAULT 0 NOT NULL,
+    bl_parent_block_id integer,
+    bl_sitewide smallint DEFAULT 1 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.block OWNER TO wikiuser;
+
+--
+-- Name: block_bl_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.block_bl_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.block_bl_id_seq OWNER TO wikiuser;
+
+--
+-- Name: block_bl_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.block_bl_id_seq OWNED BY mediawiki.block.bl_id;
+
+
+--
+-- Name: block_target; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.block_target (
+    bt_id integer NOT NULL,
+    bt_address text,
+    bt_user integer,
+    bt_user_text text,
+    bt_auto smallint DEFAULT 0 NOT NULL,
+    bt_range_start text,
+    bt_range_end text,
+    bt_ip_hex text,
+    bt_count integer DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.block_target OWNER TO wikiuser;
+
+--
+-- Name: block_target_bt_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.block_target_bt_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.block_target_bt_id_seq OWNER TO wikiuser;
+
+--
+-- Name: block_target_bt_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.block_target_bt_id_seq OWNED BY mediawiki.block_target.bt_id;
+
+
+--
+-- Name: bot_passwords; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.bot_passwords (
+    bp_user integer NOT NULL,
+    bp_app_id text NOT NULL,
+    bp_password text NOT NULL,
+    bp_token text DEFAULT ''::text NOT NULL,
+    bp_restrictions text NOT NULL,
+    bp_grants text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.bot_passwords OWNER TO wikiuser;
+
+--
+-- Name: category; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.category (
+    cat_id integer NOT NULL,
+    cat_title text NOT NULL,
+    cat_pages integer DEFAULT 0 NOT NULL,
+    cat_subcats integer DEFAULT 0 NOT NULL,
+    cat_files integer DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.category OWNER TO wikiuser;
+
+--
+-- Name: category_cat_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.category_cat_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.category_cat_id_seq OWNER TO wikiuser;
+
+--
+-- Name: category_cat_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.category_cat_id_seq OWNED BY mediawiki.category.cat_id;
+
+
+--
+-- Name: categorylinks; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.categorylinks (
+    cl_from integer DEFAULT 0 NOT NULL,
+    cl_to text DEFAULT ''::text NOT NULL,
+    cl_sortkey text DEFAULT ''::text NOT NULL,
+    cl_sortkey_prefix text DEFAULT ''::text NOT NULL,
+    cl_timestamp timestamp with time zone NOT NULL,
+    cl_collation text DEFAULT ''::text NOT NULL,
+    cl_type text DEFAULT 'page'::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.categorylinks OWNER TO wikiuser;
+
+--
+-- Name: change_tag; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.change_tag (
+    ct_id integer NOT NULL,
+    ct_rc_id integer,
+    ct_log_id integer,
+    ct_rev_id integer,
+    ct_params text,
+    ct_tag_id integer NOT NULL
+);
+
+
+ALTER TABLE mediawiki.change_tag OWNER TO wikiuser;
+
+--
+-- Name: change_tag_ct_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.change_tag_ct_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.change_tag_ct_id_seq OWNER TO wikiuser;
+
+--
+-- Name: change_tag_ct_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.change_tag_ct_id_seq OWNED BY mediawiki.change_tag.ct_id;
+
+
+--
+-- Name: change_tag_def; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.change_tag_def (
+    ctd_id integer NOT NULL,
+    ctd_name text NOT NULL,
+    ctd_user_defined smallint NOT NULL,
+    ctd_count bigint DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.change_tag_def OWNER TO wikiuser;
+
+--
+-- Name: change_tag_def_ctd_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.change_tag_def_ctd_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.change_tag_def_ctd_id_seq OWNER TO wikiuser;
+
+--
+-- Name: change_tag_def_ctd_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.change_tag_def_ctd_id_seq OWNED BY mediawiki.change_tag_def.ctd_id;
+
+
+--
+-- Name: comment; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.comment (
+    comment_id bigint NOT NULL,
+    comment_hash integer NOT NULL,
+    comment_text text NOT NULL,
+    comment_data text
+);
+
+
+ALTER TABLE mediawiki.comment OWNER TO wikiuser;
+
+--
+-- Name: comment_comment_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.comment_comment_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.comment_comment_id_seq OWNER TO wikiuser;
+
+--
+-- Name: comment_comment_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.comment_comment_id_seq OWNED BY mediawiki.comment.comment_id;
+
+
+--
+-- Name: content; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.content (
+    content_id bigint NOT NULL,
+    content_size integer NOT NULL,
+    content_sha1 text NOT NULL,
+    content_model smallint NOT NULL,
+    content_address text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.content OWNER TO wikiuser;
+
+--
+-- Name: content_content_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.content_content_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.content_content_id_seq OWNER TO wikiuser;
+
+--
+-- Name: content_content_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.content_content_id_seq OWNED BY mediawiki.content.content_id;
+
+
+--
+-- Name: content_models; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.content_models (
+    model_id integer NOT NULL,
+    model_name text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.content_models OWNER TO wikiuser;
+
+--
+-- Name: content_models_model_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.content_models_model_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.content_models_model_id_seq OWNER TO wikiuser;
+
+--
+-- Name: content_models_model_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.content_models_model_id_seq OWNED BY mediawiki.content_models.model_id;
+
+
+--
+-- Name: externallinks; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.externallinks (
+    el_id integer NOT NULL,
+    el_from integer DEFAULT 0 NOT NULL,
+    el_to_domain_index text DEFAULT ''::text NOT NULL,
+    el_to_path text
+);
+
+
+ALTER TABLE mediawiki.externallinks OWNER TO wikiuser;
+
+--
+-- Name: externallinks_el_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.externallinks_el_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.externallinks_el_id_seq OWNER TO wikiuser;
+
+--
+-- Name: externallinks_el_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.externallinks_el_id_seq OWNED BY mediawiki.externallinks.el_id;
+
+
+--
+-- Name: filearchive; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.filearchive (
+    fa_id integer NOT NULL,
+    fa_name text DEFAULT ''::text NOT NULL,
+    fa_archive_name text DEFAULT ''::text,
+    fa_storage_group text,
+    fa_storage_key text DEFAULT ''::text,
+    fa_deleted_user integer,
+    fa_deleted_timestamp timestamp with time zone,
+    fa_deleted_reason_id bigint NOT NULL,
+    fa_size bigint DEFAULT 0,
+    fa_width integer DEFAULT 0,
+    fa_height integer DEFAULT 0,
+    fa_metadata text,
+    fa_bits integer DEFAULT 0,
+    fa_media_type text,
+    fa_major_mime text DEFAULT 'unknown'::text,
+    fa_minor_mime text DEFAULT 'unknown'::text,
+    fa_description_id bigint NOT NULL,
+    fa_actor bigint NOT NULL,
+    fa_timestamp timestamp with time zone,
+    fa_deleted smallint DEFAULT 0 NOT NULL,
+    fa_sha1 text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.filearchive OWNER TO wikiuser;
+
+--
+-- Name: filearchive_fa_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.filearchive_fa_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.filearchive_fa_id_seq OWNER TO wikiuser;
+
+--
+-- Name: filearchive_fa_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.filearchive_fa_id_seq OWNED BY mediawiki.filearchive.fa_id;
+
+
+--
+-- Name: image; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.image (
+    img_name text DEFAULT ''::text NOT NULL,
+    img_size bigint DEFAULT 0 NOT NULL,
+    img_width integer DEFAULT 0 NOT NULL,
+    img_height integer DEFAULT 0 NOT NULL,
+    img_metadata text NOT NULL,
+    img_bits integer DEFAULT 0 NOT NULL,
+    img_media_type text,
+    img_major_mime text DEFAULT 'unknown'::text NOT NULL,
+    img_minor_mime text DEFAULT 'unknown'::text NOT NULL,
+    img_description_id bigint NOT NULL,
+    img_actor bigint NOT NULL,
+    img_timestamp timestamp with time zone NOT NULL,
+    img_sha1 text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.image OWNER TO wikiuser;
+
+--
+-- Name: imagelinks; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.imagelinks (
+    il_from integer DEFAULT 0 NOT NULL,
+    il_to text DEFAULT ''::text NOT NULL,
+    il_from_namespace integer DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.imagelinks OWNER TO wikiuser;
+
+--
+-- Name: interwiki; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.interwiki (
+    iw_prefix character varying(32) NOT NULL,
+    iw_url text NOT NULL,
+    iw_api text NOT NULL,
+    iw_wikiid character varying(64) NOT NULL,
+    iw_local smallint NOT NULL,
+    iw_trans smallint DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.interwiki OWNER TO wikiuser;
+
+--
+-- Name: ip_changes; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.ip_changes (
+    ipc_rev_id integer DEFAULT 0 NOT NULL,
+    ipc_rev_timestamp timestamp with time zone NOT NULL,
+    ipc_hex text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.ip_changes OWNER TO wikiuser;
+
+--
+-- Name: ipblocks; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.ipblocks (
+    ipb_id integer NOT NULL,
+    ipb_address text NOT NULL,
+    ipb_user integer DEFAULT 0 NOT NULL,
+    ipb_by_actor bigint NOT NULL,
+    ipb_reason_id bigint NOT NULL,
+    ipb_timestamp timestamp with time zone NOT NULL,
+    ipb_auto smallint DEFAULT 0 NOT NULL,
+    ipb_anon_only smallint DEFAULT 0 NOT NULL,
+    ipb_create_account smallint DEFAULT 1 NOT NULL,
+    ipb_enable_autoblock smallint DEFAULT 1 NOT NULL,
+    ipb_expiry timestamp with time zone NOT NULL,
+    ipb_range_start text NOT NULL,
+    ipb_range_end text NOT NULL,
+    ipb_deleted smallint DEFAULT 0 NOT NULL,
+    ipb_block_email smallint DEFAULT 0 NOT NULL,
+    ipb_allow_usertalk smallint DEFAULT 0 NOT NULL,
+    ipb_parent_block_id integer,
+    ipb_sitewide smallint DEFAULT 1 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.ipblocks OWNER TO wikiuser;
+
+--
+-- Name: ipblocks_ipb_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.ipblocks_ipb_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.ipblocks_ipb_id_seq OWNER TO wikiuser;
+
+--
+-- Name: ipblocks_ipb_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.ipblocks_ipb_id_seq OWNED BY mediawiki.ipblocks.ipb_id;
+
+
+--
+-- Name: ipblocks_restrictions; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.ipblocks_restrictions (
+    ir_ipb_id integer NOT NULL,
+    ir_type smallint NOT NULL,
+    ir_value integer NOT NULL
+);
+
+
+ALTER TABLE mediawiki.ipblocks_restrictions OWNER TO wikiuser;
+
+--
+-- Name: iwlinks; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.iwlinks (
+    iwl_from integer DEFAULT 0 NOT NULL,
+    iwl_prefix text DEFAULT ''::text NOT NULL,
+    iwl_title text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.iwlinks OWNER TO wikiuser;
+
+--
+-- Name: job; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.job (
+    job_id integer NOT NULL,
+    job_cmd text DEFAULT ''::text NOT NULL,
+    job_namespace integer NOT NULL,
+    job_title text NOT NULL,
+    job_timestamp timestamp with time zone,
+    job_params text NOT NULL,
+    job_random integer DEFAULT 0 NOT NULL,
+    job_attempts integer DEFAULT 0 NOT NULL,
+    job_token text DEFAULT ''::text NOT NULL,
+    job_token_timestamp timestamp with time zone,
+    job_sha1 text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.job OWNER TO wikiuser;
+
+--
+-- Name: job_job_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.job_job_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.job_job_id_seq OWNER TO wikiuser;
+
+--
+-- Name: job_job_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.job_job_id_seq OWNED BY mediawiki.job.job_id;
+
+
+--
+-- Name: l10n_cache; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.l10n_cache (
+    lc_lang text NOT NULL,
+    lc_key character varying(255) NOT NULL,
+    lc_value text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.l10n_cache OWNER TO wikiuser;
+
+--
+-- Name: langlinks; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.langlinks (
+    ll_from integer DEFAULT 0 NOT NULL,
+    ll_lang text DEFAULT ''::text NOT NULL,
+    ll_title text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.langlinks OWNER TO wikiuser;
+
+--
+-- Name: linktarget; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.linktarget (
+    lt_id bigint NOT NULL,
+    lt_namespace integer NOT NULL,
+    lt_title text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.linktarget OWNER TO wikiuser;
+
+--
+-- Name: linktarget_lt_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.linktarget_lt_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.linktarget_lt_id_seq OWNER TO wikiuser;
+
+--
+-- Name: linktarget_lt_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.linktarget_lt_id_seq OWNED BY mediawiki.linktarget.lt_id;
+
+
+--
+-- Name: log_search; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.log_search (
+    ls_field text NOT NULL,
+    ls_value character varying(255) NOT NULL,
+    ls_log_id integer DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.log_search OWNER TO wikiuser;
+
+--
+-- Name: logging; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.logging (
+    log_id integer NOT NULL,
+    log_type text DEFAULT ''::text NOT NULL,
+    log_action text DEFAULT ''::text NOT NULL,
+    log_timestamp timestamp with time zone DEFAULT '1970-01-01 00:00:00+00'::timestamp with time zone NOT NULL,
+    log_actor bigint NOT NULL,
+    log_namespace integer DEFAULT 0 NOT NULL,
+    log_title text DEFAULT ''::text NOT NULL,
+    log_page integer,
+    log_comment_id bigint NOT NULL,
+    log_params text NOT NULL,
+    log_deleted smallint DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.logging OWNER TO wikiuser;
+
+--
+-- Name: logging_log_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.logging_log_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.logging_log_id_seq OWNER TO wikiuser;
+
+--
+-- Name: logging_log_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.logging_log_id_seq OWNED BY mediawiki.logging.log_id;
+
+
+--
+-- Name: module_deps; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.module_deps (
+    md_module text NOT NULL,
+    md_skin text NOT NULL,
+    md_deps text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.module_deps OWNER TO wikiuser;
+
+--
+-- Name: objectcache; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.objectcache (
+    keyname text DEFAULT ''::text NOT NULL,
+    value text,
+    exptime timestamp with time zone NOT NULL,
+    modtoken character varying(17) DEFAULT '00000000000000000'::character varying NOT NULL,
+    flags integer
+);
+
+
+ALTER TABLE mediawiki.objectcache OWNER TO wikiuser;
+
+--
+-- Name: oldimage; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.oldimage (
+    oi_name text DEFAULT ''::text NOT NULL,
+    oi_archive_name text DEFAULT ''::text NOT NULL,
+    oi_size bigint DEFAULT 0 NOT NULL,
+    oi_width integer DEFAULT 0 NOT NULL,
+    oi_height integer DEFAULT 0 NOT NULL,
+    oi_bits integer DEFAULT 0 NOT NULL,
+    oi_description_id bigint NOT NULL,
+    oi_actor bigint NOT NULL,
+    oi_timestamp timestamp with time zone NOT NULL,
+    oi_metadata text NOT NULL,
+    oi_media_type text,
+    oi_major_mime text DEFAULT 'unknown'::text NOT NULL,
+    oi_minor_mime text DEFAULT 'unknown'::text NOT NULL,
+    oi_deleted smallint DEFAULT 0 NOT NULL,
+    oi_sha1 text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.oldimage OWNER TO wikiuser;
+
+--
+-- Name: page; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.page (
+    page_id integer NOT NULL,
+    page_namespace integer NOT NULL,
+    page_title text NOT NULL,
+    page_is_redirect smallint DEFAULT 0 NOT NULL,
+    page_is_new smallint DEFAULT 0 NOT NULL,
+    page_random double precision NOT NULL,
+    page_touched timestamp with time zone NOT NULL,
+    page_links_updated timestamp with time zone,
+    page_latest integer NOT NULL,
+    page_len integer NOT NULL,
+    page_content_model text,
+    page_lang text,
+    titlevector tsvector
+);
+
+
+ALTER TABLE mediawiki.page OWNER TO wikiuser;
+
+--
+-- Name: page_page_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.page_page_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.page_page_id_seq OWNER TO wikiuser;
+
+--
+-- Name: page_page_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.page_page_id_seq OWNED BY mediawiki.page.page_id;
+
+
+--
+-- Name: page_props; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.page_props (
+    pp_page integer NOT NULL,
+    pp_propname text NOT NULL,
+    pp_value text NOT NULL,
+    pp_sortkey double precision
+);
+
+
+ALTER TABLE mediawiki.page_props OWNER TO wikiuser;
+
+--
+-- Name: page_restrictions; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.page_restrictions (
+    pr_id integer NOT NULL,
+    pr_page integer NOT NULL,
+    pr_type text NOT NULL,
+    pr_level text NOT NULL,
+    pr_cascade smallint NOT NULL,
+    pr_expiry timestamp with time zone
+);
+
+
+ALTER TABLE mediawiki.page_restrictions OWNER TO wikiuser;
+
+--
+-- Name: page_restrictions_pr_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.page_restrictions_pr_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.page_restrictions_pr_id_seq OWNER TO wikiuser;
+
+--
+-- Name: page_restrictions_pr_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.page_restrictions_pr_id_seq OWNED BY mediawiki.page_restrictions.pr_id;
+
+
+--
+-- Name: pagelinks; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.pagelinks (
+    pl_from integer DEFAULT 0 NOT NULL,
+    pl_namespace integer DEFAULT 0 NOT NULL,
+    pl_title text DEFAULT ''::text NOT NULL,
+    pl_from_namespace integer DEFAULT 0 NOT NULL,
+    pl_target_id bigint
+);
+
+
+ALTER TABLE mediawiki.pagelinks OWNER TO wikiuser;
+
+--
+-- Name: protected_titles; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.protected_titles (
+    pt_namespace integer NOT NULL,
+    pt_title text NOT NULL,
+    pt_user integer NOT NULL,
+    pt_reason_id bigint NOT NULL,
+    pt_timestamp timestamp with time zone NOT NULL,
+    pt_expiry timestamp with time zone NOT NULL,
+    pt_create_perm text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.protected_titles OWNER TO wikiuser;
+
+--
+-- Name: querycache; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.querycache (
+    qc_type text NOT NULL,
+    qc_value integer DEFAULT 0 NOT NULL,
+    qc_namespace integer DEFAULT 0 NOT NULL,
+    qc_title text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.querycache OWNER TO wikiuser;
+
+--
+-- Name: querycache_info; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.querycache_info (
+    qci_type text DEFAULT ''::text NOT NULL,
+    qci_timestamp timestamp with time zone DEFAULT '1970-01-01 00:00:00+00'::timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE mediawiki.querycache_info OWNER TO wikiuser;
+
+--
+-- Name: querycachetwo; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.querycachetwo (
+    qcc_type text NOT NULL,
+    qcc_value integer DEFAULT 0 NOT NULL,
+    qcc_namespace integer DEFAULT 0 NOT NULL,
+    qcc_title text DEFAULT ''::text NOT NULL,
+    qcc_namespacetwo integer DEFAULT 0 NOT NULL,
+    qcc_titletwo text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.querycachetwo OWNER TO wikiuser;
+
+--
+-- Name: recentchanges; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.recentchanges (
+    rc_id integer NOT NULL,
+    rc_timestamp timestamp with time zone NOT NULL,
+    rc_actor bigint NOT NULL,
+    rc_namespace integer DEFAULT 0 NOT NULL,
+    rc_title text DEFAULT ''::text NOT NULL,
+    rc_comment_id bigint NOT NULL,
+    rc_minor smallint DEFAULT 0 NOT NULL,
+    rc_bot smallint DEFAULT 0 NOT NULL,
+    rc_new smallint DEFAULT 0 NOT NULL,
+    rc_cur_id integer DEFAULT 0 NOT NULL,
+    rc_this_oldid integer DEFAULT 0 NOT NULL,
+    rc_last_oldid integer DEFAULT 0 NOT NULL,
+    rc_type smallint DEFAULT 0 NOT NULL,
+    rc_source text DEFAULT ''::text NOT NULL,
+    rc_patrolled smallint DEFAULT 0 NOT NULL,
+    rc_ip text DEFAULT ''::text NOT NULL,
+    rc_old_len integer,
+    rc_new_len integer,
+    rc_deleted smallint DEFAULT 0 NOT NULL,
+    rc_logid integer DEFAULT 0 NOT NULL,
+    rc_log_type text,
+    rc_log_action text,
+    rc_params text
+);
+
+
+ALTER TABLE mediawiki.recentchanges OWNER TO wikiuser;
+
+--
+-- Name: recentchanges_rc_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.recentchanges_rc_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.recentchanges_rc_id_seq OWNER TO wikiuser;
+
+--
+-- Name: recentchanges_rc_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.recentchanges_rc_id_seq OWNED BY mediawiki.recentchanges.rc_id;
+
+
+--
+-- Name: redirect; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.redirect (
+    rd_from integer DEFAULT 0 NOT NULL,
+    rd_namespace integer DEFAULT 0 NOT NULL,
+    rd_title text DEFAULT ''::text NOT NULL,
+    rd_interwiki character varying(32) DEFAULT NULL::character varying,
+    rd_fragment text
+);
+
+
+ALTER TABLE mediawiki.redirect OWNER TO wikiuser;
+
+--
+-- Name: revision; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.revision (
+    rev_id integer NOT NULL,
+    rev_page integer NOT NULL,
+    rev_comment_id bigint DEFAULT 0 NOT NULL,
+    rev_actor bigint DEFAULT 0 NOT NULL,
+    rev_timestamp timestamp with time zone NOT NULL,
+    rev_minor_edit smallint DEFAULT 0 NOT NULL,
+    rev_deleted smallint DEFAULT 0 NOT NULL,
+    rev_len integer,
+    rev_parent_id integer,
+    rev_sha1 text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.revision OWNER TO wikiuser;
+
+--
+-- Name: revision_rev_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.revision_rev_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.revision_rev_id_seq OWNER TO wikiuser;
+
+--
+-- Name: revision_rev_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.revision_rev_id_seq OWNED BY mediawiki.revision.rev_id;
+
+
+--
+-- Name: searchindex; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.searchindex (
+    si_page integer NOT NULL,
+    si_title character varying(255) DEFAULT ''::character varying NOT NULL,
+    si_text text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.searchindex OWNER TO wikiuser;
+
+--
+-- Name: site_identifiers; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.site_identifiers (
+    si_type text NOT NULL,
+    si_key text NOT NULL,
+    si_site integer NOT NULL
+);
+
+
+ALTER TABLE mediawiki.site_identifiers OWNER TO wikiuser;
+
+--
+-- Name: site_stats; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.site_stats (
+    ss_row_id integer NOT NULL,
+    ss_total_edits bigint,
+    ss_good_articles bigint,
+    ss_total_pages bigint,
+    ss_users bigint,
+    ss_active_users bigint,
+    ss_images bigint
+);
+
+
+ALTER TABLE mediawiki.site_stats OWNER TO wikiuser;
+
+--
+-- Name: sites; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.sites (
+    site_id integer NOT NULL,
+    site_global_key text NOT NULL,
+    site_type text NOT NULL,
+    site_group text NOT NULL,
+    site_source text NOT NULL,
+    site_language text NOT NULL,
+    site_protocol text NOT NULL,
+    site_domain character varying(255) NOT NULL,
+    site_data text NOT NULL,
+    site_forward smallint NOT NULL,
+    site_config text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.sites OWNER TO wikiuser;
+
+--
+-- Name: sites_site_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.sites_site_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.sites_site_id_seq OWNER TO wikiuser;
+
+--
+-- Name: sites_site_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.sites_site_id_seq OWNED BY mediawiki.sites.site_id;
+
+
+--
+-- Name: slot_roles; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.slot_roles (
+    role_id integer NOT NULL,
+    role_name text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.slot_roles OWNER TO wikiuser;
+
+--
+-- Name: slot_roles_role_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.slot_roles_role_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.slot_roles_role_id_seq OWNER TO wikiuser;
+
+--
+-- Name: slot_roles_role_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.slot_roles_role_id_seq OWNED BY mediawiki.slot_roles.role_id;
+
+
+--
+-- Name: slots; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.slots (
+    slot_revision_id bigint NOT NULL,
+    slot_role_id smallint NOT NULL,
+    slot_content_id bigint NOT NULL,
+    slot_origin bigint NOT NULL
+);
+
+
+ALTER TABLE mediawiki.slots OWNER TO wikiuser;
+
+--
+-- Name: templatelinks; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.templatelinks (
+    tl_from integer DEFAULT 0 NOT NULL,
+    tl_target_id bigint NOT NULL,
+    tl_from_namespace integer DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE mediawiki.templatelinks OWNER TO wikiuser;
+
+--
+-- Name: text; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.text (
+    old_id integer NOT NULL,
+    old_text text NOT NULL,
+    old_flags text NOT NULL,
+    textvector tsvector
+);
+
+
+ALTER TABLE mediawiki.text OWNER TO wikiuser;
+
+--
+-- Name: text_old_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.text_old_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.text_old_id_seq OWNER TO wikiuser;
+
+--
+-- Name: text_old_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.text_old_id_seq OWNED BY mediawiki.text.old_id;
+
+
+--
+-- Name: updatelog; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.updatelog (
+    ul_key character varying(255) NOT NULL,
+    ul_value text
+);
+
+
+ALTER TABLE mediawiki.updatelog OWNER TO wikiuser;
+
+--
+-- Name: uploadstash; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.uploadstash (
+    us_id integer NOT NULL,
+    us_user integer NOT NULL,
+    us_key character varying(255) NOT NULL,
+    us_orig_path character varying(255) NOT NULL,
+    us_path character varying(255) NOT NULL,
+    us_source_type character varying(50) DEFAULT NULL::character varying,
+    us_timestamp timestamp with time zone NOT NULL,
+    us_status character varying(50) NOT NULL,
+    us_chunk_inx integer,
+    us_props text,
+    us_size bigint NOT NULL,
+    us_sha1 character varying(31) NOT NULL,
+    us_mime character varying(255) DEFAULT NULL::character varying,
+    us_media_type mediawiki.us_media_type_enum,
+    us_image_width integer,
+    us_image_height integer,
+    us_image_bits smallint
+);
+
+
+ALTER TABLE mediawiki.uploadstash OWNER TO wikiuser;
+
+--
+-- Name: uploadstash_us_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.uploadstash_us_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.uploadstash_us_id_seq OWNER TO wikiuser;
+
+--
+-- Name: uploadstash_us_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.uploadstash_us_id_seq OWNED BY mediawiki.uploadstash.us_id;
+
+
+--
+-- Name: user; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki."user" (
+    user_id integer NOT NULL,
+    user_name text DEFAULT ''::text NOT NULL,
+    user_real_name text DEFAULT ''::text NOT NULL,
+    user_password text NOT NULL,
+    user_newpassword text NOT NULL,
+    user_newpass_time timestamp with time zone,
+    user_email text NOT NULL,
+    user_touched timestamp with time zone NOT NULL,
+    user_token text DEFAULT ''::text NOT NULL,
+    user_email_authenticated timestamp with time zone,
+    user_email_token text,
+    user_email_token_expires timestamp with time zone,
+    user_registration timestamp with time zone,
+    user_editcount integer,
+    user_password_expires timestamp with time zone,
+    user_is_temp smallint DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE mediawiki."user" OWNER TO wikiuser;
+
+--
+-- Name: user_autocreate_serial; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.user_autocreate_serial (
+    uas_shard integer NOT NULL,
+    uas_year smallint NOT NULL,
+    uas_value integer NOT NULL
+);
+
+
+ALTER TABLE mediawiki.user_autocreate_serial OWNER TO wikiuser;
+
+--
+-- Name: user_former_groups; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.user_former_groups (
+    ufg_user integer DEFAULT 0 NOT NULL,
+    ufg_group text DEFAULT ''::text NOT NULL
+);
+
+
+ALTER TABLE mediawiki.user_former_groups OWNER TO wikiuser;
+
+--
+-- Name: user_groups; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.user_groups (
+    ug_user integer DEFAULT 0 NOT NULL,
+    ug_group text DEFAULT ''::text NOT NULL,
+    ug_expiry timestamp with time zone
+);
+
+
+ALTER TABLE mediawiki.user_groups OWNER TO wikiuser;
+
+--
+-- Name: user_newtalk; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.user_newtalk (
+    user_id integer DEFAULT 0 NOT NULL,
+    user_ip text DEFAULT ''::text NOT NULL,
+    user_last_timestamp timestamp with time zone
+);
+
+
+ALTER TABLE mediawiki.user_newtalk OWNER TO wikiuser;
+
+--
+-- Name: user_properties; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.user_properties (
+    up_user integer NOT NULL,
+    up_property text NOT NULL,
+    up_value text
+);
+
+
+ALTER TABLE mediawiki.user_properties OWNER TO wikiuser;
+
+--
+-- Name: user_user_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.user_user_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.user_user_id_seq OWNER TO wikiuser;
+
+--
+-- Name: user_user_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.user_user_id_seq OWNED BY mediawiki."user".user_id;
+
+
+--
+-- Name: watchlist; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.watchlist (
+    wl_id integer NOT NULL,
+    wl_user integer NOT NULL,
+    wl_namespace integer DEFAULT 0 NOT NULL,
+    wl_title text DEFAULT ''::text NOT NULL,
+    wl_notificationtimestamp timestamp with time zone
+);
+
+
+ALTER TABLE mediawiki.watchlist OWNER TO wikiuser;
+
+--
+-- Name: watchlist_expiry; Type: TABLE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TABLE mediawiki.watchlist_expiry (
+    we_item integer NOT NULL,
+    we_expiry timestamp with time zone NOT NULL
+);
+
+
+ALTER TABLE mediawiki.watchlist_expiry OWNER TO wikiuser;
+
+--
+-- Name: watchlist_wl_id_seq; Type: SEQUENCE; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE SEQUENCE mediawiki.watchlist_wl_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER TABLE mediawiki.watchlist_wl_id_seq OWNER TO wikiuser;
+
+--
+-- Name: watchlist_wl_id_seq; Type: SEQUENCE OWNED BY; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER SEQUENCE mediawiki.watchlist_wl_id_seq OWNED BY mediawiki.watchlist.wl_id;
+
+
+--
+-- Name: actor actor_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.actor ALTER COLUMN actor_id SET DEFAULT nextval('mediawiki.actor_actor_id_seq'::regclass);
+
+
+--
+-- Name: archive ar_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.archive ALTER COLUMN ar_id SET DEFAULT nextval('mediawiki.archive_ar_id_seq'::regclass);
+
+
+--
+-- Name: block bl_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.block ALTER COLUMN bl_id SET DEFAULT nextval('mediawiki.block_bl_id_seq'::regclass);
+
+
+--
+-- Name: block_target bt_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.block_target ALTER COLUMN bt_id SET DEFAULT nextval('mediawiki.block_target_bt_id_seq'::regclass);
+
+
+--
+-- Name: category cat_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.category ALTER COLUMN cat_id SET DEFAULT nextval('mediawiki.category_cat_id_seq'::regclass);
+
+
+--
+-- Name: change_tag ct_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.change_tag ALTER COLUMN ct_id SET DEFAULT nextval('mediawiki.change_tag_ct_id_seq'::regclass);
+
+
+--
+-- Name: change_tag_def ctd_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.change_tag_def ALTER COLUMN ctd_id SET DEFAULT nextval('mediawiki.change_tag_def_ctd_id_seq'::regclass);
+
+
+--
+-- Name: comment comment_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.comment ALTER COLUMN comment_id SET DEFAULT nextval('mediawiki.comment_comment_id_seq'::regclass);
+
+
+--
+-- Name: content content_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.content ALTER COLUMN content_id SET DEFAULT nextval('mediawiki.content_content_id_seq'::regclass);
+
+
+--
+-- Name: content_models model_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.content_models ALTER COLUMN model_id SET DEFAULT nextval('mediawiki.content_models_model_id_seq'::regclass);
+
+
+--
+-- Name: externallinks el_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.externallinks ALTER COLUMN el_id SET DEFAULT nextval('mediawiki.externallinks_el_id_seq'::regclass);
+
+
+--
+-- Name: filearchive fa_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.filearchive ALTER COLUMN fa_id SET DEFAULT nextval('mediawiki.filearchive_fa_id_seq'::regclass);
+
+
+--
+-- Name: ipblocks ipb_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.ipblocks ALTER COLUMN ipb_id SET DEFAULT nextval('mediawiki.ipblocks_ipb_id_seq'::regclass);
+
+
+--
+-- Name: job job_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.job ALTER COLUMN job_id SET DEFAULT nextval('mediawiki.job_job_id_seq'::regclass);
+
+
+--
+-- Name: linktarget lt_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.linktarget ALTER COLUMN lt_id SET DEFAULT nextval('mediawiki.linktarget_lt_id_seq'::regclass);
+
+
+--
+-- Name: logging log_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.logging ALTER COLUMN log_id SET DEFAULT nextval('mediawiki.logging_log_id_seq'::regclass);
+
+
+--
+-- Name: page page_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.page ALTER COLUMN page_id SET DEFAULT nextval('mediawiki.page_page_id_seq'::regclass);
+
+
+--
+-- Name: page_restrictions pr_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.page_restrictions ALTER COLUMN pr_id SET DEFAULT nextval('mediawiki.page_restrictions_pr_id_seq'::regclass);
+
+
+--
+-- Name: recentchanges rc_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.recentchanges ALTER COLUMN rc_id SET DEFAULT nextval('mediawiki.recentchanges_rc_id_seq'::regclass);
+
+
+--
+-- Name: revision rev_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.revision ALTER COLUMN rev_id SET DEFAULT nextval('mediawiki.revision_rev_id_seq'::regclass);
+
+
+--
+-- Name: sites site_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.sites ALTER COLUMN site_id SET DEFAULT nextval('mediawiki.sites_site_id_seq'::regclass);
+
+
+--
+-- Name: slot_roles role_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.slot_roles ALTER COLUMN role_id SET DEFAULT nextval('mediawiki.slot_roles_role_id_seq'::regclass);
+
+
+--
+-- Name: text old_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.text ALTER COLUMN old_id SET DEFAULT nextval('mediawiki.text_old_id_seq'::regclass);
+
+
+--
+-- Name: uploadstash us_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.uploadstash ALTER COLUMN us_id SET DEFAULT nextval('mediawiki.uploadstash_us_id_seq'::regclass);
+
+
+--
+-- Name: user user_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki."user" ALTER COLUMN user_id SET DEFAULT nextval('mediawiki.user_user_id_seq'::regclass);
+
+
+--
+-- Name: watchlist wl_id; Type: DEFAULT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.watchlist ALTER COLUMN wl_id SET DEFAULT nextval('mediawiki.watchlist_wl_id_seq'::regclass);
+
+
+--
+-- Data for Name: actor; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.actor (actor_id, actor_user, actor_name) FROM stdin;
+1	1	Admin
+2	2	MediaWiki default
+\.
+
+
+--
+-- Data for Name: archive; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.archive (ar_id, ar_namespace, ar_title, ar_comment_id, ar_actor, ar_timestamp, ar_minor_edit, ar_rev_id, ar_deleted, ar_len, ar_page_id, ar_parent_id, ar_sha1) FROM stdin;
+\.
+
+
+--
+-- Data for Name: block; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.block (bl_id, bl_target, bl_by_actor, bl_reason_id, bl_timestamp, bl_anon_only, bl_create_account, bl_enable_autoblock, bl_expiry, bl_deleted, bl_block_email, bl_allow_usertalk, bl_parent_block_id, bl_sitewide) FROM stdin;
+\.
+
+
+--
+-- Data for Name: block_target; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.block_target (bt_id, bt_address, bt_user, bt_user_text, bt_auto, bt_range_start, bt_range_end, bt_ip_hex, bt_count) FROM stdin;
+\.
+
+
+--
+-- Data for Name: bot_passwords; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.bot_passwords (bp_user, bp_app_id, bp_password, bp_token, bp_restrictions, bp_grants) FROM stdin;
+\.
+
+
+--
+-- Data for Name: category; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.category (cat_id, cat_title, cat_pages, cat_subcats, cat_files) FROM stdin;
+\.
+
+
+--
+-- Data for Name: categorylinks; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.categorylinks (cl_from, cl_to, cl_sortkey, cl_sortkey_prefix, cl_timestamp, cl_collation, cl_type) FROM stdin;
+\.
+
+
+--
+-- Data for Name: change_tag; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.change_tag (ct_id, ct_rc_id, ct_log_id, ct_rev_id, ct_params, ct_tag_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: change_tag_def; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.change_tag_def (ctd_id, ctd_name, ctd_user_defined, ctd_count) FROM stdin;
+\.
+
+
+--
+-- Data for Name: comment; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.comment (comment_id, comment_hash, comment_text, comment_data) FROM stdin;
+1	0		\N
+\.
+
+
+--
+-- Data for Name: content; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.content (content_id, content_size, content_sha1, content_model, content_address) FROM stdin;
+1	1030	mbpqtir3kv6nje91ox8qhit10ifhnuu	1	tt:1
+\.
+
+
+--
+-- Data for Name: content_models; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.content_models (model_id, model_name) FROM stdin;
+1	wikitext
+\.
+
+
+--
+-- Data for Name: externallinks; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.externallinks (el_id, el_from, el_to_domain_index, el_to_path) FROM stdin;
+\.
+
+
+--
+-- Data for Name: filearchive; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.filearchive (fa_id, fa_name, fa_archive_name, fa_storage_group, fa_storage_key, fa_deleted_user, fa_deleted_timestamp, fa_deleted_reason_id, fa_size, fa_width, fa_height, fa_metadata, fa_bits, fa_media_type, fa_major_mime, fa_minor_mime, fa_description_id, fa_actor, fa_timestamp, fa_deleted, fa_sha1) FROM stdin;
+\.
+
+
+--
+-- Data for Name: image; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.image (img_name, img_size, img_width, img_height, img_metadata, img_bits, img_media_type, img_major_mime, img_minor_mime, img_description_id, img_actor, img_timestamp, img_sha1) FROM stdin;
+\.
+
+
+--
+-- Data for Name: imagelinks; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.imagelinks (il_from, il_to, il_from_namespace) FROM stdin;
+\.
+
+
+--
+-- Data for Name: interwiki; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.interwiki (iw_prefix, iw_url, iw_api, iw_wikiid, iw_local, iw_trans) FROM stdin;
+acronym	https://www.acronymfinder.com/~/search/af.aspx?string=exact&Acronym=$1			0	0
+advogato	http://www.advogato.org/$1			0	0
+arxiv	https://www.arxiv.org/abs/$1			0	0
+c2find	http://c2.com/cgi/wiki?FindPage&value=$1			0	0
+cache	https://www.google.com/search?q=cache:$1			0	0
+commons	https://commons.wikimedia.org/wiki/$1	https://commons.wikimedia.org/w/api.php		0	0
+dictionary	http://www.dict.org/bin/Dict?Database=*&Form=Dict1&Strategy=*&Query=$1			0	0
+doi	https://dx.doi.org/$1			0	0
+drumcorpswiki	http://www.drumcorpswiki.com/$1	http://drumcorpswiki.com/api.php		0	0
+dwjwiki	http://www.suberic.net/cgi-bin/dwj/wiki.cgi?$1			0	0
+elibre	http://enciclopedia.us.es/index.php/$1	http://enciclopedia.us.es/api.php		0	0
+emacswiki	https://www.emacswiki.org/emacs/$1			0	0
+foldoc	https://foldoc.org/?$1			0	0
+foxwiki	https://fox.wikis.com/wc.dll?Wiki~$1			0	0
+freebsdman	https://www.FreeBSD.org/cgi/man.cgi?apropos=1&query=$1			0	0
+gentoo-wiki	http://gentoo-wiki.com/$1			0	0
+google	https://www.google.com/search?q=$1			0	0
+googlegroups	https://groups.google.com/groups?q=$1			0	0
+hammondwiki	http://www.dairiki.org/HammondWiki/$1			0	0
+hrwiki	http://www.hrwiki.org/wiki/$1	http://www.hrwiki.org/w/api.php		0	0
+imdb	http://www.imdb.com/find?q=$1&tt=on			0	0
+kmwiki	https://kmwiki.wikispaces.com/$1			0	0
+linuxwiki	http://linuxwiki.de/$1			0	0
+lojban	https://mw.lojban.org/papri/$1			0	0
+lqwiki	http://wiki.linuxquestions.org/wiki/$1			0	0
+meatball	http://meatballwiki.org/wiki/$1			0	0
+mediawikiwiki	https://www.mediawiki.org/wiki/$1	https://www.mediawiki.org/w/api.php		0	0
+memoryalpha	http://en.memory-alpha.org/wiki/$1	http://en.memory-alpha.org/api.php		0	0
+metawiki	http://sunir.org/apps/meta.pl?$1			0	0
+metawikimedia	https://meta.wikimedia.org/wiki/$1	https://meta.wikimedia.org/w/api.php		0	0
+mozillawiki	https://wiki.mozilla.org/$1	https://wiki.mozilla.org/api.php		0	0
+mw	https://www.mediawiki.org/wiki/$1	https://www.mediawiki.org/w/api.php		0	0
+oeis	https://oeis.org/$1			0	0
+openwiki	http://openwiki.com/ow.asp?$1			0	0
+pmid	https://www.ncbi.nlm.nih.gov/pubmed/$1?dopt=Abstract			0	0
+pythoninfo	https://wiki.python.org/moin/$1			0	0
+rfc	https://tools.ietf.org/html/rfc$1			0	0
+s23wiki	http://s23.org/wiki/$1	http://s23.org/w/api.php		0	0
+seattlewireless	http://seattlewireless.net/$1			0	0
+senseislibrary	https://senseis.xmp.net/?$1			0	0
+shoutwiki	http://www.shoutwiki.com/wiki/$1	http://www.shoutwiki.com/w/api.php		0	0
+squeak	http://wiki.squeak.org/squeak/$1			0	0
+tmbw	http://www.tmbw.net/wiki/$1	http://tmbw.net/wiki/api.php		0	0
+tmnet	http://www.technomanifestos.net/?$1			0	0
+theopedia	https://www.theopedia.com/$1			0	0
+twiki	http://twiki.org/cgi-bin/view/$1			0	0
+uncyclopedia	https://en.uncyclopedia.co/wiki/$1	https://en.uncyclopedia.co/w/api.php		0	0
+unreal	https://wiki.beyondunreal.com/$1	https://wiki.beyondunreal.com/w/api.php		0	0
+usemod	http://www.usemod.com/cgi-bin/wiki.pl?$1			0	0
+wiki	http://c2.com/cgi/wiki?$1			0	0
+wikia	http://www.wikia.com/wiki/$1			0	0
+wikibooks	https://en.wikibooks.org/wiki/$1	https://en.wikibooks.org/w/api.php		0	0
+wikidata	https://www.wikidata.org/wiki/$1	https://www.wikidata.org/w/api.php		0	0
+wikif1	http://www.wikif1.org/$1			0	0
+wikihow	https://www.wikihow.com/$1	https://www.wikihow.com/api.php		0	0
+wikinfo	http://wikinfo.co/English/index.php/$1			0	0
+wikimedia	https://foundation.wikimedia.org/wiki/$1	https://foundation.wikimedia.org/w/api.php		0	0
+wikinews	https://en.wikinews.org/wiki/$1	https://en.wikinews.org/w/api.php		0	0
+wikipedia	https://en.wikipedia.org/wiki/$1	https://en.wikipedia.org/w/api.php		0	0
+wikiquote	https://en.wikiquote.org/wiki/$1	https://en.wikiquote.org/w/api.php		0	0
+wikisource	https://wikisource.org/wiki/$1	https://wikisource.org/w/api.php		0	0
+wikispecies	https://species.wikimedia.org/wiki/$1	https://species.wikimedia.org/w/api.php		0	0
+wikiversity	https://en.wikiversity.org/wiki/$1	https://en.wikiversity.org/w/api.php		0	0
+wikivoyage	https://en.wikivoyage.org/wiki/$1	https://en.wikivoyage.org/w/api.php		0	0
+wikt	https://en.wiktionary.org/wiki/$1	https://en.wiktionary.org/w/api.php		0	0
+wiktionary	https://en.wiktionary.org/wiki/$1	https://en.wiktionary.org/w/api.php		0	0
+\.
+
+
+--
+-- Data for Name: ip_changes; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.ip_changes (ipc_rev_id, ipc_rev_timestamp, ipc_hex) FROM stdin;
+\.
+
+
+--
+-- Data for Name: ipblocks; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.ipblocks (ipb_id, ipb_address, ipb_user, ipb_by_actor, ipb_reason_id, ipb_timestamp, ipb_auto, ipb_anon_only, ipb_create_account, ipb_enable_autoblock, ipb_expiry, ipb_range_start, ipb_range_end, ipb_deleted, ipb_block_email, ipb_allow_usertalk, ipb_parent_block_id, ipb_sitewide) FROM stdin;
+\.
+
+
+--
+-- Data for Name: ipblocks_restrictions; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.ipblocks_restrictions (ir_ipb_id, ir_type, ir_value) FROM stdin;
+\.
+
+
+--
+-- Data for Name: iwlinks; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.iwlinks (iwl_from, iwl_prefix, iwl_title) FROM stdin;
+\.
+
+
+--
+-- Data for Name: job; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.job (job_id, job_cmd, job_namespace, job_title, job_timestamp, job_params, job_random, job_attempts, job_token, job_token_timestamp, job_sha1) FROM stdin;
+\.
+
+
+--
+-- Data for Name: l10n_cache; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.l10n_cache (lc_lang, lc_key, lc_value) FROM stdin;
+\.
+
+
+--
+-- Data for Name: langlinks; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.langlinks (ll_from, ll_lang, ll_title) FROM stdin;
+\.
+
+
+--
+-- Data for Name: linktarget; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.linktarget (lt_id, lt_namespace, lt_title) FROM stdin;
+\.
+
+
+--
+-- Data for Name: log_search; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.log_search (ls_field, ls_value, ls_log_id) FROM stdin;
+associated_rev_id	1	1
+\.
+
+
+--
+-- Data for Name: logging; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.logging (log_id, log_type, log_action, log_timestamp, log_actor, log_namespace, log_title, log_page, log_comment_id, log_params, log_deleted) FROM stdin;
+1	create	create	2025-08-06 09:24:11+00	2	0	Заглавная_страница	1	1	a:1:{s:17:"associated_rev_id";i:1;}	0
+\.
+
+
+--
+-- Data for Name: module_deps; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.module_deps (md_module, md_skin, md_deps) FROM stdin;
+\.
+
+
+--
+-- Data for Name: objectcache; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.objectcache (keyname, value, exptime, modtoken, flags) FROM stdin;
+\.
+
+
+--
+-- Data for Name: oldimage; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.oldimage (oi_name, oi_archive_name, oi_size, oi_width, oi_height, oi_bits, oi_description_id, oi_actor, oi_timestamp, oi_metadata, oi_media_type, oi_major_mime, oi_minor_mime, oi_deleted, oi_sha1) FROM stdin;
+\.
+
+
+--
+-- Data for Name: page; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.page (page_id, page_namespace, page_title, page_is_redirect, page_is_new, page_random, page_touched, page_links_updated, page_latest, page_len, page_content_model, page_lang, titlevector) FROM stdin;
+1	0	Заглавная_страница	0	1	0.092782034749	2025-08-06 09:24:11+00	\N	1	1030	wikitext	\N	'заглавная':1 'страница':2
+\.
+
+
+--
+-- Data for Name: page_props; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.page_props (pp_page, pp_propname, pp_value, pp_sortkey) FROM stdin;
+\.
+
+
+--
+-- Data for Name: page_restrictions; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.page_restrictions (pr_id, pr_page, pr_type, pr_level, pr_cascade, pr_expiry) FROM stdin;
+\.
+
+
+--
+-- Data for Name: pagelinks; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.pagelinks (pl_from, pl_namespace, pl_title, pl_from_namespace, pl_target_id) FROM stdin;
+\.
+
+
+--
+-- Data for Name: protected_titles; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.protected_titles (pt_namespace, pt_title, pt_user, pt_reason_id, pt_timestamp, pt_expiry, pt_create_perm) FROM stdin;
+\.
+
+
+--
+-- Data for Name: querycache; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.querycache (qc_type, qc_value, qc_namespace, qc_title) FROM stdin;
+\.
+
+
+--
+-- Data for Name: querycache_info; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.querycache_info (qci_type, qci_timestamp) FROM stdin;
+\.
+
+
+--
+-- Data for Name: querycachetwo; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.querycachetwo (qcc_type, qcc_value, qcc_namespace, qcc_title, qcc_namespacetwo, qcc_titletwo) FROM stdin;
+\.
+
+
+--
+-- Data for Name: recentchanges; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.recentchanges (rc_id, rc_timestamp, rc_actor, rc_namespace, rc_title, rc_comment_id, rc_minor, rc_bot, rc_new, rc_cur_id, rc_this_oldid, rc_last_oldid, rc_type, rc_source, rc_patrolled, rc_ip, rc_old_len, rc_new_len, rc_deleted, rc_logid, rc_log_type, rc_log_action, rc_params) FROM stdin;
+\.
+
+
+--
+-- Data for Name: redirect; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.redirect (rd_from, rd_namespace, rd_title, rd_interwiki, rd_fragment) FROM stdin;
+\.
+
+
+--
+-- Data for Name: revision; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.revision (rev_id, rev_page, rev_comment_id, rev_actor, rev_timestamp, rev_minor_edit, rev_deleted, rev_len, rev_parent_id, rev_sha1) FROM stdin;
+1	1	1	2	2025-08-06 09:24:11+00	0	0	1030	0	mbpqtir3kv6nje91ox8qhit10ifhnuu
+\.
+
+
+--
+-- Data for Name: searchindex; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.searchindex (si_page, si_title, si_text) FROM stdin;
+\.
+
+
+--
+-- Data for Name: site_identifiers; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.site_identifiers (si_type, si_key, si_site) FROM stdin;
+\.
+
+
+--
+-- Data for Name: site_stats; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.site_stats (ss_row_id, ss_total_edits, ss_good_articles, ss_total_pages, ss_users, ss_active_users, ss_images) FROM stdin;
+1	0	0	0	1	0	0
+\.
+
+
+--
+-- Data for Name: sites; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.sites (site_id, site_global_key, site_type, site_group, site_source, site_language, site_protocol, site_domain, site_data, site_forward, site_config) FROM stdin;
+\.
+
+
+--
+-- Data for Name: slot_roles; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.slot_roles (role_id, role_name) FROM stdin;
+1	main
+\.
+
+
+--
+-- Data for Name: slots; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.slots (slot_revision_id, slot_role_id, slot_content_id, slot_origin) FROM stdin;
+1	1	1	1
+\.
+
+
+--
+-- Data for Name: templatelinks; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.templatelinks (tl_from, tl_target_id, tl_from_namespace) FROM stdin;
+\.
+
+
+--
+-- Data for Name: text; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.text (old_id, old_text, old_flags, textvector) FROM stdin;
+1	<strong>MediaWiki успешно установлена.</strong>\n\nИнформацию по работе с этой вики можно найти в [https://www.mediawiki.org/wiki/Special:MyLanguage/Help:Contents справочном руководстве].\n\n== Начало работы ==\n* [https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:Configuration_settings Список возможных настроек];\n* [https://www.mediawiki.org/wiki/Manual:FAQ/ru Часто задаваемые вопросы и ответы по MediaWiki];\n* [https://lists.wikimedia.org/postorius/lists/mediawiki-announce.lists.wikimedia.org/ Рассылка уведомлений о выходе новых версий MediaWiki].\n* [https://www.mediawiki.org/wiki/Special:MyLanguage/Localisation#Translation_resources Перевод MediaWiki на свой язык]\n* [https://www.mediawiki.org/wiki/Special:MyLanguage/Manual:Combating_spam Узнайте, как бороться со спамом в вашей вики]	utf-8	'/postorius/lists/mediawiki-announce.lists.wikimedia.org/':38 '/wiki/manual:faq/ru':28 '/wiki/special:mylanguage/help:contents':15 '/wiki/special:mylanguage/localisation#translation_resources':48 '/wiki/special:mylanguage/manual:combating_spam':56 '/wiki/special:mylanguage/manual:configuration_settings':22 'lists.wikimedia.org':37 'lists.wikimedia.org/postorius/lists/mediawiki-announce.lists.wikimedia.org/':36 'mediawiki':1,35,45,50 'www.mediawiki.org':14,21,27,47,55 'www.mediawiki.org/wiki/manual:faq/ru':26 'www.mediawiki.org/wiki/special:mylanguage/help:contents':13 'www.mediawiki.org/wiki/special:mylanguage/localisation#translation_resources':46 'www.mediawiki.org/wiki/special:mylanguage/manual:combating_spam':54 'www.mediawiki.org/wiki/special:mylanguage/manual:configuration_settings':20 'бороться':59 'в':12,62 'вашей':63 'версий':44 'вики':9,64 'возможных':24 'вопросы':31 'выходе':42 'задаваемые':30 'и':32 'информацию':4 'как':58 'можно':10 'на':51 'найти':11 'настроек':25 'начало':18 'новых':43 'о':41 'ответы':33 'перевод':49 'по':5,34 'работе':6 'работы':19 'рассылка':39 'руководстве':17 'с':7 'свой':52 'со':60 'спамом':61 'список':23 'справочном':16 'уведомлений':40 'узнайте':57 'успешно':2 'установлена':3 'часто':29 'этой':8 'язык':53
+\.
+
+
+--
+-- Data for Name: updatelog; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.updatelog (ul_key, ul_value) FROM stdin;
+filearchive-fa_major_mime-patch-fa_major_mime-chemical.sql	\N
+image-img_major_mime-patch-img_major_mime-chemical.sql	\N
+oldimage-oi_major_mime-patch-oi_major_mime-chemical.sql	\N
+user_groups-ug_group-patch-ug_group-length-increase-255.sql	\N
+user_former_groups-ufg_group-patch-ufg_group-length-increase-255.sql	\N
+user_properties-up_property-patch-up_property.sql	\N
+patch-textsearch_bug66650.sql	\N
+UpdateCollation::uppercase	\N
+ConvertDjvuMetadata	\N
+MigrateRevisionActorTemp	\N
+MigrateLinksTabletemplatelinks	\N
+MigrateRevisionCommentTemp	\N
+MigrateExternallinks	\N
+FixInconsistentRedirects	\N
+image-img_size-patch-image-img_size_to_bigint.sql	\N
+filearchive-fa_size-patch-filearchive-fa_size_to_bigint.sql	\N
+oldimage-oi_size-patch-oldimage-oi_size_to_bigint.sql	\N
+uploadstash-us_size-patch-uploadstash-us_size_to_bigint.sql	\N
+PopulateUserIsTemp	\N
+\.
+
+
+--
+-- Data for Name: uploadstash; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.uploadstash (us_id, us_user, us_key, us_orig_path, us_path, us_source_type, us_timestamp, us_status, us_chunk_inx, us_props, us_size, us_sha1, us_mime, us_media_type, us_image_width, us_image_height, us_image_bits) FROM stdin;
+\.
+
+
+--
+-- Data for Name: user; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki."user" (user_id, user_name, user_real_name, user_password, user_newpassword, user_newpass_time, user_email, user_touched, user_token, user_email_authenticated, user_email_token, user_email_token_expires, user_registration, user_editcount, user_password_expires, user_is_temp) FROM stdin;
+1	Admin		:pbkdf2:sha512:30000:64:WweGQrGvOjow2+Ui0niY4A==:uDVTTu7rpJ26jz6i3sUHBkGr9oAO3IsiaPhCgZI//X39IiRGJk9Bj4FJEF/+A2xfi8qCJTBxEZNWl2i6CqHHhA==		\N	ily1925@yandex.ru	2025-08-06 09:24:11+00	e2be811c75041abdbd2f067ead83591f	\N	\N	\N	2025-08-06 09:24:10+00	0	\N	0
+2	MediaWiki default				\N		2025-08-06 09:24:11+00	*** INVALID ***	\N	\N	\N	2025-08-06 09:24:11+00	0	\N	0
+\.
+
+
+--
+-- Data for Name: user_autocreate_serial; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.user_autocreate_serial (uas_shard, uas_year, uas_value) FROM stdin;
+\.
+
+
+--
+-- Data for Name: user_former_groups; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.user_former_groups (ufg_user, ufg_group) FROM stdin;
+\.
+
+
+--
+-- Data for Name: user_groups; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.user_groups (ug_user, ug_group, ug_expiry) FROM stdin;
+1	sysop	\N
+1	bureaucrat	\N
+1	interface-admin	\N
+\.
+
+
+--
+-- Data for Name: user_newtalk; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.user_newtalk (user_id, user_ip, user_last_timestamp) FROM stdin;
+\.
+
+
+--
+-- Data for Name: user_properties; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.user_properties (up_user, up_property, up_value) FROM stdin;
+\.
+
+
+--
+-- Data for Name: watchlist; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.watchlist (wl_id, wl_user, wl_namespace, wl_title, wl_notificationtimestamp) FROM stdin;
+\.
+
+
+--
+-- Data for Name: watchlist_expiry; Type: TABLE DATA; Schema: mediawiki; Owner: wikiuser
+--
+
+COPY mediawiki.watchlist_expiry (we_item, we_expiry) FROM stdin;
+\.
+
+
+--
+-- Name: actor_actor_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.actor_actor_id_seq', 2, true);
+
+
+--
+-- Name: archive_ar_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.archive_ar_id_seq', 1, false);
+
+
+--
+-- Name: block_bl_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.block_bl_id_seq', 1, false);
+
+
+--
+-- Name: block_target_bt_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.block_target_bt_id_seq', 1, false);
+
+
+--
+-- Name: category_cat_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.category_cat_id_seq', 1, false);
+
+
+--
+-- Name: change_tag_ct_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.change_tag_ct_id_seq', 1, false);
+
+
+--
+-- Name: change_tag_def_ctd_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.change_tag_def_ctd_id_seq', 1, false);
+
+
+--
+-- Name: comment_comment_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.comment_comment_id_seq', 1, true);
+
+
+--
+-- Name: content_content_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.content_content_id_seq', 1, true);
+
+
+--
+-- Name: content_models_model_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.content_models_model_id_seq', 1, true);
+
+
+--
+-- Name: externallinks_el_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.externallinks_el_id_seq', 1, false);
+
+
+--
+-- Name: filearchive_fa_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.filearchive_fa_id_seq', 1, false);
+
+
+--
+-- Name: ipblocks_ipb_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.ipblocks_ipb_id_seq', 1, false);
+
+
+--
+-- Name: job_job_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.job_job_id_seq', 1, false);
+
+
+--
+-- Name: linktarget_lt_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.linktarget_lt_id_seq', 1, false);
+
+
+--
+-- Name: logging_log_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.logging_log_id_seq', 1, true);
+
+
+--
+-- Name: page_page_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.page_page_id_seq', 1, true);
+
+
+--
+-- Name: page_restrictions_pr_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.page_restrictions_pr_id_seq', 1, false);
+
+
+--
+-- Name: recentchanges_rc_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.recentchanges_rc_id_seq', 1, false);
+
+
+--
+-- Name: revision_rev_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.revision_rev_id_seq', 1, true);
+
+
+--
+-- Name: sites_site_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.sites_site_id_seq', 1, false);
+
+
+--
+-- Name: slot_roles_role_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.slot_roles_role_id_seq', 1, true);
+
+
+--
+-- Name: text_old_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.text_old_id_seq', 1, true);
+
+
+--
+-- Name: uploadstash_us_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.uploadstash_us_id_seq', 1, false);
+
+
+--
+-- Name: user_user_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.user_user_id_seq', 2, true);
+
+
+--
+-- Name: watchlist_wl_id_seq; Type: SEQUENCE SET; Schema: mediawiki; Owner: wikiuser
+--
+
+SELECT pg_catalog.setval('mediawiki.watchlist_wl_id_seq', 1, false);
+
+
+--
+-- Name: actor actor_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.actor
+    ADD CONSTRAINT actor_pkey PRIMARY KEY (actor_id);
+
+
+--
+-- Name: archive archive_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.archive
+    ADD CONSTRAINT archive_pkey PRIMARY KEY (ar_id);
+
+
+--
+-- Name: block block_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.block
+    ADD CONSTRAINT block_pkey PRIMARY KEY (bl_id);
+
+
+--
+-- Name: block_target block_target_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.block_target
+    ADD CONSTRAINT block_target_pkey PRIMARY KEY (bt_id);
+
+
+--
+-- Name: bot_passwords bot_passwords_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.bot_passwords
+    ADD CONSTRAINT bot_passwords_pkey PRIMARY KEY (bp_user, bp_app_id);
+
+
+--
+-- Name: category category_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.category
+    ADD CONSTRAINT category_pkey PRIMARY KEY (cat_id);
+
+
+--
+-- Name: categorylinks categorylinks_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.categorylinks
+    ADD CONSTRAINT categorylinks_pkey PRIMARY KEY (cl_from, cl_to);
+
+
+--
+-- Name: change_tag_def change_tag_def_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.change_tag_def
+    ADD CONSTRAINT change_tag_def_pkey PRIMARY KEY (ctd_id);
+
+
+--
+-- Name: change_tag change_tag_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.change_tag
+    ADD CONSTRAINT change_tag_pkey PRIMARY KEY (ct_id);
+
+
+--
+-- Name: comment comment_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.comment
+    ADD CONSTRAINT comment_pkey PRIMARY KEY (comment_id);
+
+
+--
+-- Name: content_models content_models_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.content_models
+    ADD CONSTRAINT content_models_pkey PRIMARY KEY (model_id);
+
+
+--
+-- Name: content content_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.content
+    ADD CONSTRAINT content_pkey PRIMARY KEY (content_id);
+
+
+--
+-- Name: externallinks externallinks_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.externallinks
+    ADD CONSTRAINT externallinks_pkey PRIMARY KEY (el_id);
+
+
+--
+-- Name: filearchive filearchive_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.filearchive
+    ADD CONSTRAINT filearchive_pkey PRIMARY KEY (fa_id);
+
+
+--
+-- Name: image image_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.image
+    ADD CONSTRAINT image_pkey PRIMARY KEY (img_name);
+
+
+--
+-- Name: imagelinks imagelinks_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.imagelinks
+    ADD CONSTRAINT imagelinks_pkey PRIMARY KEY (il_from, il_to);
+
+
+--
+-- Name: interwiki interwiki_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.interwiki
+    ADD CONSTRAINT interwiki_pkey PRIMARY KEY (iw_prefix);
+
+
+--
+-- Name: ip_changes ip_changes_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.ip_changes
+    ADD CONSTRAINT ip_changes_pkey PRIMARY KEY (ipc_rev_id);
+
+
+--
+-- Name: ipblocks ipblocks_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.ipblocks
+    ADD CONSTRAINT ipblocks_pkey PRIMARY KEY (ipb_id);
+
+
+--
+-- Name: ipblocks_restrictions ipblocks_restrictions_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.ipblocks_restrictions
+    ADD CONSTRAINT ipblocks_restrictions_pkey PRIMARY KEY (ir_ipb_id, ir_type, ir_value);
+
+
+--
+-- Name: iwlinks iwlinks_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.iwlinks
+    ADD CONSTRAINT iwlinks_pkey PRIMARY KEY (iwl_from, iwl_prefix, iwl_title);
+
+
+--
+-- Name: job job_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.job
+    ADD CONSTRAINT job_pkey PRIMARY KEY (job_id);
+
+
+--
+-- Name: l10n_cache l10n_cache_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.l10n_cache
+    ADD CONSTRAINT l10n_cache_pkey PRIMARY KEY (lc_lang, lc_key);
+
+
+--
+-- Name: langlinks langlinks_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.langlinks
+    ADD CONSTRAINT langlinks_pkey PRIMARY KEY (ll_from, ll_lang);
+
+
+--
+-- Name: linktarget linktarget_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.linktarget
+    ADD CONSTRAINT linktarget_pkey PRIMARY KEY (lt_id);
+
+
+--
+-- Name: log_search log_search_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.log_search
+    ADD CONSTRAINT log_search_pkey PRIMARY KEY (ls_field, ls_value, ls_log_id);
+
+
+--
+-- Name: logging logging_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.logging
+    ADD CONSTRAINT logging_pkey PRIMARY KEY (log_id);
+
+
+--
+-- Name: module_deps module_deps_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.module_deps
+    ADD CONSTRAINT module_deps_pkey PRIMARY KEY (md_module, md_skin);
+
+
+--
+-- Name: objectcache objectcache_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.objectcache
+    ADD CONSTRAINT objectcache_pkey PRIMARY KEY (keyname);
+
+
+--
+-- Name: page page_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.page
+    ADD CONSTRAINT page_pkey PRIMARY KEY (page_id);
+
+
+--
+-- Name: page_props page_props_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.page_props
+    ADD CONSTRAINT page_props_pkey PRIMARY KEY (pp_page, pp_propname);
+
+
+--
+-- Name: page_restrictions page_restrictions_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.page_restrictions
+    ADD CONSTRAINT page_restrictions_pkey PRIMARY KEY (pr_id);
+
+
+--
+-- Name: pagelinks pagelinks_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.pagelinks
+    ADD CONSTRAINT pagelinks_pkey PRIMARY KEY (pl_from, pl_namespace, pl_title);
+
+
+--
+-- Name: protected_titles protected_titles_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.protected_titles
+    ADD CONSTRAINT protected_titles_pkey PRIMARY KEY (pt_namespace, pt_title);
+
+
+--
+-- Name: querycache_info querycache_info_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.querycache_info
+    ADD CONSTRAINT querycache_info_pkey PRIMARY KEY (qci_type);
+
+
+--
+-- Name: recentchanges recentchanges_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.recentchanges
+    ADD CONSTRAINT recentchanges_pkey PRIMARY KEY (rc_id);
+
+
+--
+-- Name: redirect redirect_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.redirect
+    ADD CONSTRAINT redirect_pkey PRIMARY KEY (rd_from);
+
+
+--
+-- Name: revision revision_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.revision
+    ADD CONSTRAINT revision_pkey PRIMARY KEY (rev_id);
+
+
+--
+-- Name: site_identifiers site_identifiers_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.site_identifiers
+    ADD CONSTRAINT site_identifiers_pkey PRIMARY KEY (si_type, si_key);
+
+
+--
+-- Name: site_stats site_stats_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.site_stats
+    ADD CONSTRAINT site_stats_pkey PRIMARY KEY (ss_row_id);
+
+
+--
+-- Name: sites sites_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.sites
+    ADD CONSTRAINT sites_pkey PRIMARY KEY (site_id);
+
+
+--
+-- Name: slot_roles slot_roles_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.slot_roles
+    ADD CONSTRAINT slot_roles_pkey PRIMARY KEY (role_id);
+
+
+--
+-- Name: slots slots_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.slots
+    ADD CONSTRAINT slots_pkey PRIMARY KEY (slot_revision_id, slot_role_id);
+
+
+--
+-- Name: templatelinks templatelinks_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.templatelinks
+    ADD CONSTRAINT templatelinks_pkey PRIMARY KEY (tl_from, tl_target_id);
+
+
+--
+-- Name: text text_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.text
+    ADD CONSTRAINT text_pkey PRIMARY KEY (old_id);
+
+
+--
+-- Name: updatelog updatelog_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.updatelog
+    ADD CONSTRAINT updatelog_pkey PRIMARY KEY (ul_key);
+
+
+--
+-- Name: uploadstash uploadstash_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.uploadstash
+    ADD CONSTRAINT uploadstash_pkey PRIMARY KEY (us_id);
+
+
+--
+-- Name: user_autocreate_serial user_autocreate_serial_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.user_autocreate_serial
+    ADD CONSTRAINT user_autocreate_serial_pkey PRIMARY KEY (uas_shard, uas_year);
+
+
+--
+-- Name: user_former_groups user_former_groups_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.user_former_groups
+    ADD CONSTRAINT user_former_groups_pkey PRIMARY KEY (ufg_user, ufg_group);
+
+
+--
+-- Name: user_groups user_groups_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.user_groups
+    ADD CONSTRAINT user_groups_pkey PRIMARY KEY (ug_user, ug_group);
+
+
+--
+-- Name: user user_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki."user"
+    ADD CONSTRAINT user_pkey PRIMARY KEY (user_id);
+
+
+--
+-- Name: user_properties user_properties_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.user_properties
+    ADD CONSTRAINT user_properties_pkey PRIMARY KEY (up_user, up_property);
+
+
+--
+-- Name: watchlist_expiry watchlist_expiry_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.watchlist_expiry
+    ADD CONSTRAINT watchlist_expiry_pkey PRIMARY KEY (we_item);
+
+
+--
+-- Name: watchlist watchlist_pkey; Type: CONSTRAINT; Schema: mediawiki; Owner: wikiuser
+--
+
+ALTER TABLE ONLY mediawiki.watchlist
+    ADD CONSTRAINT watchlist_pkey PRIMARY KEY (wl_id);
+
+
+--
+-- Name: actor_name; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX actor_name ON mediawiki.actor USING btree (actor_name);
+
+
+--
+-- Name: actor_user; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX actor_user ON mediawiki.actor USING btree (actor_user);
+
+
+--
+-- Name: ar_actor_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ar_actor_timestamp ON mediawiki.archive USING btree (ar_actor, ar_timestamp);
+
+
+--
+-- Name: ar_name_title_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ar_name_title_timestamp ON mediawiki.archive USING btree (ar_namespace, ar_title, ar_timestamp);
+
+
+--
+-- Name: ar_revid_uniq; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX ar_revid_uniq ON mediawiki.archive USING btree (ar_rev_id);
+
+
+--
+-- Name: bl_expiry; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX bl_expiry ON mediawiki.block USING btree (bl_expiry);
+
+
+--
+-- Name: bl_parent_block_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX bl_parent_block_id ON mediawiki.block USING btree (bl_parent_block_id);
+
+
+--
+-- Name: bl_target; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX bl_target ON mediawiki.block USING btree (bl_target);
+
+
+--
+-- Name: bl_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX bl_timestamp ON mediawiki.block USING btree (bl_timestamp);
+
+
+--
+-- Name: bt_address; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX bt_address ON mediawiki.block_target USING btree (bt_address);
+
+
+--
+-- Name: bt_ip_user_text; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX bt_ip_user_text ON mediawiki.block_target USING btree (bt_ip_hex, bt_user_text);
+
+
+--
+-- Name: bt_range; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX bt_range ON mediawiki.block_target USING btree (bt_range_start, bt_range_end);
+
+
+--
+-- Name: bt_user; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX bt_user ON mediawiki.block_target USING btree (bt_user);
+
+
+--
+-- Name: cat_pages; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX cat_pages ON mediawiki.category USING btree (cat_pages);
+
+
+--
+-- Name: cat_title; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX cat_title ON mediawiki.category USING btree (cat_title);
+
+
+--
+-- Name: cl_sortkey; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX cl_sortkey ON mediawiki.categorylinks USING btree (cl_to, cl_type, cl_sortkey, cl_from);
+
+
+--
+-- Name: cl_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX cl_timestamp ON mediawiki.categorylinks USING btree (cl_to, cl_timestamp);
+
+
+--
+-- Name: comment_hash; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX comment_hash ON mediawiki.comment USING btree (comment_hash);
+
+
+--
+-- Name: ct_log_tag_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX ct_log_tag_id ON mediawiki.change_tag USING btree (ct_log_id, ct_tag_id);
+
+
+--
+-- Name: ct_rc_tag_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX ct_rc_tag_id ON mediawiki.change_tag USING btree (ct_rc_id, ct_tag_id);
+
+
+--
+-- Name: ct_rev_tag_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX ct_rev_tag_id ON mediawiki.change_tag USING btree (ct_rev_id, ct_tag_id);
+
+
+--
+-- Name: ct_tag_id_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ct_tag_id_id ON mediawiki.change_tag USING btree (ct_tag_id, ct_rc_id, ct_rev_id, ct_log_id);
+
+
+--
+-- Name: ctd_count; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ctd_count ON mediawiki.change_tag_def USING btree (ctd_count);
+
+
+--
+-- Name: ctd_name; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX ctd_name ON mediawiki.change_tag_def USING btree (ctd_name);
+
+
+--
+-- Name: ctd_user_defined; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ctd_user_defined ON mediawiki.change_tag_def USING btree (ctd_user_defined);
+
+
+--
+-- Name: el_from; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX el_from ON mediawiki.externallinks USING btree (el_from);
+
+
+--
+-- Name: el_to_domain_index_to_path; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX el_to_domain_index_to_path ON mediawiki.externallinks USING btree (el_to_domain_index, el_to_path);
+
+
+--
+-- Name: exptime; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX exptime ON mediawiki.objectcache USING btree (exptime);
+
+
+--
+-- Name: fa_actor_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX fa_actor_timestamp ON mediawiki.filearchive USING btree (fa_actor, fa_timestamp);
+
+
+--
+-- Name: fa_deleted_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX fa_deleted_timestamp ON mediawiki.filearchive USING btree (fa_deleted_timestamp);
+
+
+--
+-- Name: fa_name; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX fa_name ON mediawiki.filearchive USING btree (fa_name, fa_timestamp);
+
+
+--
+-- Name: fa_sha1; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX fa_sha1 ON mediawiki.filearchive USING btree (fa_sha1);
+
+
+--
+-- Name: fa_storage_group; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX fa_storage_group ON mediawiki.filearchive USING btree (fa_storage_group, fa_storage_key);
+
+
+--
+-- Name: il_backlinks_namespace; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX il_backlinks_namespace ON mediawiki.imagelinks USING btree (il_from_namespace, il_to, il_from);
+
+
+--
+-- Name: il_to; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX il_to ON mediawiki.imagelinks USING btree (il_to, il_from);
+
+
+--
+-- Name: img_actor_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX img_actor_timestamp ON mediawiki.image USING btree (img_actor, img_timestamp);
+
+
+--
+-- Name: img_media_mime; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX img_media_mime ON mediawiki.image USING btree (img_media_type, img_major_mime, img_minor_mime);
+
+
+--
+-- Name: img_sha1; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX img_sha1 ON mediawiki.image USING btree (img_sha1);
+
+
+--
+-- Name: img_size; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX img_size ON mediawiki.image USING btree (img_size);
+
+
+--
+-- Name: img_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX img_timestamp ON mediawiki.image USING btree (img_timestamp);
+
+
+--
+-- Name: ipb_address_unique; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX ipb_address_unique ON mediawiki.ipblocks USING btree (ipb_address, ipb_user, ipb_auto);
+
+
+--
+-- Name: ipb_expiry; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ipb_expiry ON mediawiki.ipblocks USING btree (ipb_expiry);
+
+
+--
+-- Name: ipb_parent_block_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ipb_parent_block_id ON mediawiki.ipblocks USING btree (ipb_parent_block_id);
+
+
+--
+-- Name: ipb_range; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ipb_range ON mediawiki.ipblocks USING btree (ipb_range_start, ipb_range_end);
+
+
+--
+-- Name: ipb_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ipb_timestamp ON mediawiki.ipblocks USING btree (ipb_timestamp);
+
+
+--
+-- Name: ipb_user; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ipb_user ON mediawiki.ipblocks USING btree (ipb_user);
+
+
+--
+-- Name: ipc_hex_time; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ipc_hex_time ON mediawiki.ip_changes USING btree (ipc_hex, ipc_rev_timestamp);
+
+
+--
+-- Name: ipc_rev_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ipc_rev_timestamp ON mediawiki.ip_changes USING btree (ipc_rev_timestamp);
+
+
+--
+-- Name: ir_type_value; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ir_type_value ON mediawiki.ipblocks_restrictions USING btree (ir_type, ir_value);
+
+
+--
+-- Name: iwl_prefix_title_from; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX iwl_prefix_title_from ON mediawiki.iwlinks USING btree (iwl_prefix, iwl_title, iwl_from);
+
+
+--
+-- Name: job_cmd; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX job_cmd ON mediawiki.job USING btree (job_cmd, job_namespace, job_title, job_params);
+
+
+--
+-- Name: job_cmd_token; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX job_cmd_token ON mediawiki.job USING btree (job_cmd, job_token, job_random);
+
+
+--
+-- Name: job_cmd_token_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX job_cmd_token_id ON mediawiki.job USING btree (job_cmd, job_token, job_id);
+
+
+--
+-- Name: job_sha1; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX job_sha1 ON mediawiki.job USING btree (job_sha1);
+
+
+--
+-- Name: job_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX job_timestamp ON mediawiki.job USING btree (job_timestamp);
+
+
+--
+-- Name: ll_lang; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ll_lang ON mediawiki.langlinks USING btree (ll_lang, ll_title);
+
+
+--
+-- Name: log_actor_time; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX log_actor_time ON mediawiki.logging USING btree (log_actor, log_timestamp);
+
+
+--
+-- Name: log_actor_type_time; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX log_actor_type_time ON mediawiki.logging USING btree (log_actor, log_type, log_timestamp);
+
+
+--
+-- Name: log_page_id_time; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX log_page_id_time ON mediawiki.logging USING btree (log_page, log_timestamp);
+
+
+--
+-- Name: log_page_time; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX log_page_time ON mediawiki.logging USING btree (log_namespace, log_title, log_timestamp);
+
+
+--
+-- Name: log_times; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX log_times ON mediawiki.logging USING btree (log_timestamp);
+
+
+--
+-- Name: log_type_action; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX log_type_action ON mediawiki.logging USING btree (log_type, log_action, log_timestamp);
+
+
+--
+-- Name: log_type_time; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX log_type_time ON mediawiki.logging USING btree (log_type, log_timestamp);
+
+
+--
+-- Name: ls_log_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ls_log_id ON mediawiki.log_search USING btree (ls_log_id);
+
+
+--
+-- Name: lt_namespace_title; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX lt_namespace_title ON mediawiki.linktarget USING btree (lt_namespace, lt_title);
+
+
+--
+-- Name: model_name; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX model_name ON mediawiki.content_models USING btree (model_name);
+
+
+--
+-- Name: namespace_title; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX namespace_title ON mediawiki.watchlist USING btree (wl_namespace, wl_title);
+
+
+--
+-- Name: oi_actor_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX oi_actor_timestamp ON mediawiki.oldimage USING btree (oi_actor, oi_timestamp);
+
+
+--
+-- Name: oi_name_archive_name; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX oi_name_archive_name ON mediawiki.oldimage USING btree (oi_name, oi_archive_name);
+
+
+--
+-- Name: oi_name_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX oi_name_timestamp ON mediawiki.oldimage USING btree (oi_name, oi_timestamp);
+
+
+--
+-- Name: oi_sha1; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX oi_sha1 ON mediawiki.oldimage USING btree (oi_sha1);
+
+
+--
+-- Name: oi_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX oi_timestamp ON mediawiki.oldimage USING btree (oi_timestamp);
+
+
+--
+-- Name: page_len; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX page_len ON mediawiki.page USING btree (page_len);
+
+
+--
+-- Name: page_name_title; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX page_name_title ON mediawiki.page USING btree (page_namespace, page_title);
+
+
+--
+-- Name: page_random; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX page_random ON mediawiki.page USING btree (page_random);
+
+
+--
+-- Name: page_redirect_namespace_len; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX page_redirect_namespace_len ON mediawiki.page USING btree (page_is_redirect, page_namespace, page_len);
+
+
+--
+-- Name: pl_backlinks_namespace; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX pl_backlinks_namespace ON mediawiki.pagelinks USING btree (pl_from_namespace, pl_namespace, pl_title, pl_from);
+
+
+--
+-- Name: pl_backlinks_namespace_target_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX pl_backlinks_namespace_target_id ON mediawiki.pagelinks USING btree (pl_from_namespace, pl_target_id, pl_from);
+
+
+--
+-- Name: pl_namespace; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX pl_namespace ON mediawiki.pagelinks USING btree (pl_namespace, pl_title, pl_from);
+
+
+--
+-- Name: pl_target_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX pl_target_id ON mediawiki.pagelinks USING btree (pl_target_id, pl_from);
+
+
+--
+-- Name: pp_propname_page; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX pp_propname_page ON mediawiki.page_props USING btree (pp_propname, pp_page);
+
+
+--
+-- Name: pp_propname_sortkey_page; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX pp_propname_sortkey_page ON mediawiki.page_props USING btree (pp_propname, pp_sortkey, pp_page) WHERE (pp_sortkey IS NOT NULL);
+
+
+--
+-- Name: pr_cascade; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX pr_cascade ON mediawiki.page_restrictions USING btree (pr_cascade);
+
+
+--
+-- Name: pr_level; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX pr_level ON mediawiki.page_restrictions USING btree (pr_level);
+
+
+--
+-- Name: pr_pagetype; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX pr_pagetype ON mediawiki.page_restrictions USING btree (pr_page, pr_type);
+
+
+--
+-- Name: pr_typelevel; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX pr_typelevel ON mediawiki.page_restrictions USING btree (pr_type, pr_level);
+
+
+--
+-- Name: pt_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX pt_timestamp ON mediawiki.protected_titles USING btree (pt_timestamp);
+
+
+--
+-- Name: qc_type; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX qc_type ON mediawiki.querycache USING btree (qc_type, qc_value);
+
+
+--
+-- Name: qcc_title; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX qcc_title ON mediawiki.querycachetwo USING btree (qcc_type, qcc_namespace, qcc_title);
+
+
+--
+-- Name: qcc_titletwo; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX qcc_titletwo ON mediawiki.querycachetwo USING btree (qcc_type, qcc_namespacetwo, qcc_titletwo);
+
+
+--
+-- Name: qcc_type; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX qcc_type ON mediawiki.querycachetwo USING btree (qcc_type, qcc_value);
+
+
+--
+-- Name: rc_actor; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rc_actor ON mediawiki.recentchanges USING btree (rc_actor, rc_timestamp);
+
+
+--
+-- Name: rc_cur_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rc_cur_id ON mediawiki.recentchanges USING btree (rc_cur_id);
+
+
+--
+-- Name: rc_ip; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rc_ip ON mediawiki.recentchanges USING btree (rc_ip);
+
+
+--
+-- Name: rc_name_type_patrolled_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rc_name_type_patrolled_timestamp ON mediawiki.recentchanges USING btree (rc_namespace, rc_type, rc_patrolled, rc_timestamp);
+
+
+--
+-- Name: rc_namespace_title_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rc_namespace_title_timestamp ON mediawiki.recentchanges USING btree (rc_namespace, rc_title, rc_timestamp);
+
+
+--
+-- Name: rc_new_name_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rc_new_name_timestamp ON mediawiki.recentchanges USING btree (rc_new, rc_namespace, rc_timestamp);
+
+
+--
+-- Name: rc_ns_actor; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rc_ns_actor ON mediawiki.recentchanges USING btree (rc_namespace, rc_actor);
+
+
+--
+-- Name: rc_this_oldid; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rc_this_oldid ON mediawiki.recentchanges USING btree (rc_this_oldid);
+
+
+--
+-- Name: rc_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rc_timestamp ON mediawiki.recentchanges USING btree (rc_timestamp);
+
+
+--
+-- Name: rd_ns_title; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rd_ns_title ON mediawiki.redirect USING btree (rd_namespace, rd_title, rd_from);
+
+
+--
+-- Name: rev_actor_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rev_actor_timestamp ON mediawiki.revision USING btree (rev_actor, rev_timestamp, rev_id);
+
+
+--
+-- Name: rev_page_actor_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rev_page_actor_timestamp ON mediawiki.revision USING btree (rev_page, rev_actor, rev_timestamp);
+
+
+--
+-- Name: rev_page_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rev_page_timestamp ON mediawiki.revision USING btree (rev_page, rev_timestamp);
+
+
+--
+-- Name: rev_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX rev_timestamp ON mediawiki.revision USING btree (rev_timestamp);
+
+
+--
+-- Name: role_name; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX role_name ON mediawiki.slot_roles USING btree (role_name);
+
+
+--
+-- Name: si_key; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX si_key ON mediawiki.site_identifiers USING btree (si_key);
+
+
+--
+-- Name: si_page; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX si_page ON mediawiki.searchindex USING btree (si_page);
+
+
+--
+-- Name: si_site; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX si_site ON mediawiki.site_identifiers USING btree (si_site);
+
+
+--
+-- Name: si_text; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX si_text ON mediawiki.searchindex USING btree (si_text);
+
+
+--
+-- Name: si_title; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX si_title ON mediawiki.searchindex USING btree (si_title);
+
+
+--
+-- Name: site_global_key; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX site_global_key ON mediawiki.sites USING btree (site_global_key);
+
+
+--
+-- Name: slot_revision_origin_role; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX slot_revision_origin_role ON mediawiki.slots USING btree (slot_revision_id, slot_origin, slot_role_id);
+
+
+--
+-- Name: tl_backlinks_namespace_target_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX tl_backlinks_namespace_target_id ON mediawiki.templatelinks USING btree (tl_from_namespace, tl_target_id, tl_from);
+
+
+--
+-- Name: tl_target_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX tl_target_id ON mediawiki.templatelinks USING btree (tl_target_id, tl_from);
+
+
+--
+-- Name: ts2_page_text; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ts2_page_text ON mediawiki.text USING gin (textvector);
+
+
+--
+-- Name: ts2_page_title; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ts2_page_title ON mediawiki.page USING gin (titlevector);
+
+
+--
+-- Name: ug_expiry; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ug_expiry ON mediawiki.user_groups USING btree (ug_expiry);
+
+
+--
+-- Name: ug_group; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX ug_group ON mediawiki.user_groups USING btree (ug_group);
+
+
+--
+-- Name: un_user_id; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX un_user_id ON mediawiki.user_newtalk USING btree (user_id);
+
+
+--
+-- Name: un_user_ip; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX un_user_ip ON mediawiki.user_newtalk USING btree (user_ip);
+
+
+--
+-- Name: up_property; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX up_property ON mediawiki.user_properties USING btree (up_property);
+
+
+--
+-- Name: us_key; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX us_key ON mediawiki.uploadstash USING btree (us_key);
+
+
+--
+-- Name: us_timestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX us_timestamp ON mediawiki.uploadstash USING btree (us_timestamp);
+
+
+--
+-- Name: us_user; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX us_user ON mediawiki.uploadstash USING btree (us_user);
+
+
+--
+-- Name: user_email; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX user_email ON mediawiki."user" USING btree (user_email);
+
+
+--
+-- Name: user_email_token; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX user_email_token ON mediawiki."user" USING btree (user_email_token);
+
+
+--
+-- Name: user_name; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX user_name ON mediawiki."user" USING btree (user_name);
+
+
+--
+-- Name: we_expiry; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX we_expiry ON mediawiki.watchlist_expiry USING btree (we_expiry);
+
+
+--
+-- Name: wl_namespace_title; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX wl_namespace_title ON mediawiki.watchlist USING btree (wl_namespace, wl_title);
+
+
+--
+-- Name: wl_user; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE UNIQUE INDEX wl_user ON mediawiki.watchlist USING btree (wl_user, wl_namespace, wl_title);
+
+
+--
+-- Name: wl_user_notificationtimestamp; Type: INDEX; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE INDEX wl_user_notificationtimestamp ON mediawiki.watchlist USING btree (wl_user, wl_notificationtimestamp);
+
+
+--
+-- Name: text ts2_page_text; Type: TRIGGER; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TRIGGER ts2_page_text BEFORE INSERT OR UPDATE ON mediawiki.text FOR EACH ROW EXECUTE FUNCTION mediawiki.ts2_page_text();
+
+
+--
+-- Name: page ts2_page_title; Type: TRIGGER; Schema: mediawiki; Owner: wikiuser
+--
+
+CREATE TRIGGER ts2_page_title BEFORE INSERT OR UPDATE ON mediawiki.page FOR EACH ROW EXECUTE FUNCTION mediawiki.ts2_page_title();
+
+
+--
+-- PostgreSQL database dump complete
+--
+

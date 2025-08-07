@@ -1,0 +1,120 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for ./roles/minio
+- name: Запуск "apt-get update"
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Установка zabbix-agent
+  become: true
+  apt: 
+    name: zabbix-agent
+
+- name: Копирование конфигурационного файла zabbix
+  become: true
+  template:
+    src: zabbix_agentd.conf.j2
+    dest: /etc/zabbix/zabbix_agentd.conf
+
+- name: Добавление сервисного пользователя
+  become: true
+  user:
+    name: "minio-user"
+    create_home: no
+    shell: /sbin/nologin
+
+- name: Создание директории MinIO
+  become: true
+  file:
+    path: "{{ minio_volumes }}"
+    state: directory
+    owner: minio-user
+    group: minio-user
+    mode: '0755'
+
+- name: Скачивание последней версии MinIO
+  get_url:
+    url: 'https://dl.min.io/server/minio/release/linux-amd64/archive/minio_20240406052602.0.0_amd64.deb'
+    dest: '/tmp/minio.deb'
+
+- name: Установка MinIO
+  become: true
+  apt:
+    deb: '/tmp/minio.deb'
+
+- name: Копирование файла переменных
+  become: true
+  template:
+    src: minio.j2
+    dest: /etc/default/minio
+
+- name: Запуск сервиса MinIO
+  become: true
+  service:
+    name: minio
+    enabled: yes
+    state: started
+
+- name: Запуск агента zabbix
+  become: true
+  service:
+    name: zabbix-agent
+    enabled: yes
+    state: started
+
+- name: Установка пакетов nfs-kernel-server и nfs-common
+  become: true
+  apt: 
+    name: 
+      - nfs-kernel-server
+      - nfs-common
+
+- name: Создание общей дирректории
+  become: true
+  file:
+    path: "{{ nfs_volumes }}"
+    state: directory
+    mode: '0755'
+    owner: 'nobody'
+    group: 'nogroup'
+
+- name: Создание дирректорий для бэкапов бд
+  become: true
+  file:
+    path: "{{ nfs_volumes }}/db"
+    state: directory
+    mode: '0755'
+    owner: 'nobody'
+    group: 'nogroup'
+
+- name: Создание дирректорий для бэкапов wiki
+  become: true
+  file:
+    path: "{{ nfs_volumes }}/wiki"
+    state: directory
+    mode: '0755'
+    owner: 'nobody'
+    group: 'nogroup'
+
+- name: Create multiple directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: 'nobody'
+    group: 'nogroup'
+  loop: "{{ directory_names }}"
+
+- name: Add the directory to the NFS configuration file
+  become: true
+  lineinfile:
+    path: /etc/exports
+    line: '{{ nfs_volumes }} 10.0.0.0/8(rw,sync,no_root_squash,no_subtree_check,all_squash)'
+
+- name: Export the shared directory and restart NFS service
+  become: true
+  command:
+    cmd: exportfs -a
+  notify: 
+    - Перезапуск nfs-kernel-server 

@@ -1,0 +1,74 @@
+server {
+    listen 80;
+    server_name {{ webservers.vm_0 }};
+
+    root /var/www/mediawiki;
+    index index.php index.html index.htm;
+
+    # Images
+	location /mediawiki/images {
+		# Separate location for images/ so .php execution won't apply
+		# as required starting from v1.40
+		add_header X-Content-Type-Options "nosniff";
+        # Serve uploaded HTML as plaintext, don't execute SHTML
+        types { text/plain html htm shtml phtml; }
+	}
+	location /mediawiki/images/deleted {
+		# Deny access to deleted images folder
+		deny all;
+	}
+	# MediaWiki assets (usually images)
+	location ~ ^/mediawiki/resources/(assets|lib|src) {
+		try_files $uri =404;
+		add_header Cache-Control "public";
+		expires 7d;
+	}
+	# Assets, scripts and styles from skins and extensions
+	location ~ ^/mediawiki/(skins|extensions)/.+\.(css|js|gif|jpg|jpeg|png|svg|wasm|ttf|woff|woff2)$ {
+		try_files $uri =404;
+		add_header Cache-Control "public";
+		expires 7d;
+	}
+	# Favicon
+	location = /favicon.ico {
+		alias /mediawiki/images/6/64/Favicon.ico;
+		add_header Cache-Control "public";
+		expires 7d;
+	}
+
+	# License and credits files
+	location ~ ^/mediawiki/(COPYING|CREDITS)$ {
+		default_type text/plain;
+	}
+	
+	# Handling for Mediawiki REST API, see [[mw:API:REST_API]]
+	location /mediawiki/rest.php/ {
+		try_files $uri $uri/ /mediawiki/rest.php?$query_string;
+	}
+
+	# Handling for the article path (pretty URLs)
+	location /wiki/ {
+		rewrite ^/wiki/(?<pagename>.*)$ /mediawiki/index.php;
+	}
+
+	# Allow robots.txt in case you have one
+	location = /robots.txt {
+	}
+	# Explicit access to the root website, redirect to main page (adapt as needed)
+	#location = / {
+	#	return 301 /wiki/Main_Page;
+	#}
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+        try_files $uri /index.php;
+    }
+}

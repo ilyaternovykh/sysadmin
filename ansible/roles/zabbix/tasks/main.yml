@@ -1,0 +1,140 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for ./roles/zabbix
+- name: Запуск "apt-get update"
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Установка mysql-server
+  become: true
+  apt: 
+    name: mysql-server
+
+- name: Установка pymysql
+  become: true
+  apt:
+    name: python3-pymysql
+
+- name: Запуск mysql-server
+  become: true
+  service:
+    name: mysql
+    enabled: yes
+    state: started
+
+- name: Скачивание zabbix
+  get_url:
+    url: 'https://repo.zabbix.com/zabbix/6.4/ubuntu/pool/main/z/zabbix-release/zabbix-release_6.4-1+ubuntu22.04_all.deb'
+    dest: '/tmp/zabbix.deb'
+
+- name: Установка zabbix
+  become: true
+  apt:
+    deb: '/tmp/zabbix.deb'
+
+- name: Запуск "apt-get update"
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Установка необходимых zabbix пакетов
+  become: true
+  apt: 
+    name:
+      - zabbix-server-mysql
+      - zabbix-frontend-php
+      - zabbix-nginx-conf
+      - zabbix-sql-scripts
+      - zabbix-agent
+
+- name: Замена nginx.conf
+  become: true
+  template:
+    src: templates/nginx.conf.j2
+    dest: /etc/zabbix/nginx.conf
+
+- name: Замена default
+  become: true
+  template:
+    src: templates/default.j2
+    dest: /etc/nginx/sites-enabled/default
+  notify: 
+    - Перезапуск nginx
+
+- name: Создание my.cnf
+  become: true
+  template:
+    src: templates/.my.cnf.j2
+    dest: /home/ansible/.my.cnf
+
+- name: Создание my.cnf
+  become: true
+  template:
+    src: templates/.my.cnf.j2
+    dest: /root/.my.cnf
+    owner: root
+    mode: '0600'
+
+#- name: Set password for root user
+#  mysql_user:
+#    name: root
+#    login_unix_socket: /var/run/mysqld/mysqld.sock
+#    host: 'localhost'
+#    password: "{{ mysql_root_password }}"
+#    priv: '*.*:ALL,GRANT'
+#    state: present
+#    check_implicit_admin: true
+
+- name: Create database
+  become: true
+  mysql_db:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ mysql_db_name }}"
+    state: present
+    encoding: utf8mb4
+    collation: utf8mb4_bin
+
+- name: Create user and grant privileges
+  become: true
+  mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ mysql_user }}"
+    password: "{{ mysql_password }}"
+    priv: '*.*:ALL'
+    state: present
+    column_case_sensitive: true
+
+- name: Извлечение схемы базы данных Zabbix
+  mysql_db:
+    name: "{{ mysql_db_name }}"
+    state: import
+    target: '/usr/share/zabbix-sql-scripts/mysql/server.sql.gz'
+    login_user: "{{ mysql_user }}"
+    login_password: "{{ mysql_password }}"
+  notify: 
+    - Перезапуск mysql
+    - Перезапуск zabbix-server
+    - Перезапуск zabbix-agent
+    - Перезапуск php8.1-fpm
+
+- name: allow port 80/tcp
+  become: true
+  ufw:
+    rule: allow
+    port: '80'
+    proto: tcp
+
+- name: allow port 10050/tcp
+  become: true
+  ufw:
+    rule: allow
+    port: '1050'
+    proto: tcp
+
+- name: allow port 10051/tcp
+  become: true
+  ufw:
+    rule: allow
+    port: '1051'
+    proto: tcp

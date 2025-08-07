@@ -1,0 +1,4 @@
+pg_user: wikiuser
+pg_db_name: my_wiki
+wiki_data_path: /var/www/mediawiki
+data_service_user: www-data

@@ -1,0 +1,9 @@
+#SPDX-License-Identifier: MIT-0
+---
+# handlers file for ./roles/minio
+- name: Перезапуск nfs-kernel-server
+  become: true
+  service:
+    name: nfs-kernel-server 
+    state: restarted
+    enabled: yes

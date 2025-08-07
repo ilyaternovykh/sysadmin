@@ -1,0 +1,8 @@
+#SPDX-License-Identifier: MIT-0
+---
+# handlers file for ./roles/postgres
+- name: Перезапуск postgresql
+  become: true
+  service:
+    name: postgresql
+    state: restarted

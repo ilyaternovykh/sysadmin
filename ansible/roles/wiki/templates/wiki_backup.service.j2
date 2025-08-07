@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup wiki data
+
+[Service]
+Type=oneshot
+User={{ data_service_user }}
+ExecStart=/var/scripts/wiki_backup.sh
+
+[Install]
+WantedBy=multi-user.target

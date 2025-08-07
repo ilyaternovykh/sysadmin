@@ -1,0 +1,37 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for ./roles/nginx
+- name: Запуск "apt-get update"
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Установка nginx
+  become: true
+  apt: 
+    name: nginx
+
+- name: Копирование конфигурационного файла
+  become: true
+  template:
+    src: default.j2
+    dest: /etc/nginx/sites-available/default
+  notify: Перезапуск nginx
+
+- name: Установка zabbix-agent
+  become: true
+  apt: 
+    name: zabbix-agent
+
+- name: Копирование конфигурационного файла zabbix
+  become: true
+  template:
+    src: zabbix_agentd.conf.j2
+    dest: /etc/zabbix/zabbix_agentd.conf
+
+- name: Запуск агента zabbix
+  become: true
+  service:
+    name: zabbix-agent
+    enabled: yes
+    state: started

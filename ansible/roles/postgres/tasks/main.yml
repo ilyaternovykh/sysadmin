@@ -1,0 +1,141 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for ./roles/postgres
+- name: Запуск "apt-get update"
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Install PostgreSQL {{ pg_version }}
+  become: true
+  apt:
+    name: postgresql-{{ pg_version }}
+    update_cache: yes
+
+- name: Install ACL
+  become: true
+  apt:
+    name: acl
+    update_cache: yes
+
+- name: install pip3
+  become: true
+  apt: 
+    name: python3-pip 
+    state: present
+
+#- name: Make sure psycopg2 is installed
+#  #become: true
+#  pip:
+#    name: psycopg2
+#    state: present
+
+- name: Copy database configuration
+  become: true
+  template:
+    src: pr_postgresql.conf.j2
+    dest: /etc/postgresql/{{ pg_version }}/main/postgresql.conf
+    group: postgres
+    mode: '0644'
+    owner: postgres
+  when: role == "primary"
+ 
+- name: Copy user access configuration
+  become: true
+  template:
+    src: pr_pg_hba.conf.j2
+    dest: /etc/postgresql/{{ pg_version }}/main/pg_hba.conf
+    group: postgres
+    mode: '0640'
+    owner: postgres
+  notify: Перезапуск postgresql
+  when: role == "primary"
+
+- name: Copy database configuration
+  become: true
+  template:
+    src: st_postgresql.conf.j2
+    dest: /etc/postgresql/{{ pg_version }}/main/postgresql.conf
+    group: postgres
+    mode: '0644'
+    owner: postgres
+  when: role == "standby"
+ 
+- name: Copy user access configuration
+  become: true
+  template:
+    src: st_pg_hba.conf.j2
+    dest: /etc/postgresql/{{ pg_version }}/main/pg_hba.conf
+    group: postgres
+    mode: '0640'
+    owner: postgres
+  notify: Перезапуск postgresql
+  when: role == "standby"
+
+#- name: Создание базы mediawiki
+#  postgresql_db:
+#    state: present
+#    name: "{{ pg_db_name }}"
+#  become: true
+#  become_user: postgres
+#  when: role == "primary"
+
+#- name: Создание пользователя бд
+#  postgresql_user:
+#    state: present
+#    name: "{{ pg_db_user }}"
+#    password: "{{ pg_user_password }}"
+#  become: true
+#  become_user: postgres
+#  when: role == "primary"
+
+#- name: Grant db user access to app db
+#  postgresql_privs:
+#    type: database
+#    database: "{{ pg_db_name }}"
+#    roles: "{{ pg_db_user }}"
+#    grant_option: no
+#    privs: all
+#  become: true
+#  become_user: postgres
+#  when: role == "primary"
+
+#- name: Создание пользователя бд replication
+#  postgresql_user:
+#    state: present
+#    name: syncuser
+#    password: "{{ pg_user_password }}"
+#    role_attr_flags: replication
+#  become: true
+#  become_user: postgres
+#  when: role == "primary"
+#  notify: Перезапуск postgresql
+
+#- name: Stop PostgreSQL
+#  become: true
+#  systemd:
+#    name: postgresql
+#    state: stopped
+#  when: role == "standby"
+#
+#- name: Clean up PostgreSQL data directory
+#  become: true
+#  #become_user: postgres
+#  file:
+#    path: /var/lib/postgresql/{{ pg_version }}/main
+#    force: yes
+#    state: absent
+#  when: role == "standby"
+#
+#- name: Clone primary node data
+#  become_user: postgres
+#  shell: pg_basebackup -h {{ webservers.vm_1_local }} -D /var/lib/postgresql/14/main -U syncuser -P -v -R
+#  ignore_errors: true
+#  when: role == "standby"
+#
+#- name: Start PostgreSQL
+#  become: true
+#  systemd:
+#    name: postgresql
+#    state: started
+#    when: role == "standby"

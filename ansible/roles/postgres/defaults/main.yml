@@ -1,0 +1,10 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for ./roles/postgres
+pg_version: "14"
+pg_db_name: "my_wiki"
+pg_db_user: "wikiuser"
+pg_user_password: 12345678
+pg_sync_user_password: 12345678
+pg_postgres_user_password: 12345678
+allow_world_readable_tmpfiles: true

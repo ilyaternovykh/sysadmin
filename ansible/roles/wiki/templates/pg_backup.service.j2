@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup db my_wiki
+
+[Service]
+Type=oneshot
+User={{ pg_user }}
+ExecStart=/var/scripts/postgresql_dump.sh
+
+[Install]
+WantedBy=multi-user.target

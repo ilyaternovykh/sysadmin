@@ -1,0 +1,36 @@
+#SPDX-License-Identifier: MIT-0
+---
+# handlers file for ./roles/zabbix
+- name: Перезапуск mysql
+  become: true
+  service:
+    name: mysql
+    state: restarted
+
+- name: Перезапуск zabbix-server
+  become: true
+  service:
+    name: zabbix-server
+    state: restarted
+    enabled: yes
+
+- name: Перезапуск zabbix-agent
+  become: true
+  service:
+    name: zabbix-agent
+    state: restarted
+    enabled: yes
+
+- name: Перезапуск nginx
+  become: true
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes
+
+- name: Перезапуск php8.1-fpm
+  become: true
+  service:
+    name: php8.1-fpm
+    state: restarted
+    enabled: yes

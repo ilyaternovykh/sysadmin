@@ -1,0 +1,14 @@
+#!/bin/sh
+PATH=/etc:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
+
+set -e
+set -u
+
+
+pathBackup=/mnt/backup/db
+database={{ pg_db_name }}
+
+find $pathBackup \( -name "*-1[^5].*" -o -name "*-[023]?.*" \) -ctime +31 -delete
+pg_dump $database | gzip > $pathBackup/pgsql_$(date "+%Y-%m-%d").sql.gz
+
+exit 0

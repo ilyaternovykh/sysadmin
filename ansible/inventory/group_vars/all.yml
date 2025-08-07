@@ -1,0 +1,19 @@
+---
+ansible_connection: ssh
+ansible_user: ansible
+ansible_python_interpreter: /usr/bin/python3.10
+nfs_volumes: /srv/share/nfs
+webservers:
+  # Сервер nginx
+  vm_0: 89.169.146.73
+  # Сервер MediaWiki и postgres
+  vm_1: 51.250.14.181
+  vm_1_local: 10.128.0.25
+  # Сервер MediaWiki и postgres - резервный
+  vm_2: 62.84.112.94
+  vm_2_local: 10.128.0.10
+  # Сервер Zabbix
+  vm_3: 51.250.74.93
+  # Сервер minio
+  vm_s3: 89.169.147.138
+  vm_s3_local: 10.128.0.20

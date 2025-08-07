@@ -1,0 +1,31 @@
+all: # Все серверы в нашем inventory, all - обязателен
+  children:
+    nginx: # Группа хостов с именем nginx
+      hosts:
+        vm_0:
+          ansible_host: "{{ webservers.vm_0 }}"
+    wiki: # Группа хостов с именем wiki
+      hosts:
+        vm_1:
+          ansible_host: "{{ webservers.vm_1 }}"
+          role: "primary"
+        vm_2:
+          ansible_host: "{{ webservers.vm_2 }}"
+          role: "standby"
+    postgres: # Группа хостов с именем postgres
+      hosts:
+        vm_1:
+          ansible_host: "{{ webservers.vm_1 }}"
+          role: "primary"
+        vm_2:
+          ansible_host: "{{ webservers.vm_2 }}"
+          role: "standby"
+    zabbix: # Группа хостов с именем zabbix
+      hosts:
+        vm_3:
+          ansible_host: "{{ webservers.vm_3 }}"
+    minio: # Группа хостов с именем minio
+      hosts:
+        vm_s3:
+          ansible_host: "{{ webservers.vm_s3 }}"
+        

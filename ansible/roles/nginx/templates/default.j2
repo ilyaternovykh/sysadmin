@@ -1,0 +1,23 @@
+upstream app_servers {
+        server {{ webservers.vm_1_local }}:80;
+        server {{ webservers.vm_2_local }}:80;
+}
+
+
+server {
+	listen 80;
+
+	server_name _;
+
+	location / {
+		include proxy_params;
+		
+		proxy_pass http://app_servers;
+	
+		proxy_redirect off;
+		proxy_http_version 1.1;
+		proxy_set_header Upgrade $http_upgrade;
+		proxy_set_header Connection "upgrade";
+	}
+
+}

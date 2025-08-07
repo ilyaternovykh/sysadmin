@@ -1,0 +1,9 @@
+---
+minio_volumes: /media/minio
+minio_opts: --console-address :9001
+minio_root_user: minioadmin
+minio_root_password: 12345678
+directory_names:
+      - /srv/share/nfs/wiki/daily
+      - /srv/share/nfs/wiki/weekly
+      - /srv/share/nfs/wiki/archive

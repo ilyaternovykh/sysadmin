@@ -1,0 +1,5 @@
+---
+mysql_user: zabbix
+mysql_password: 12345 
+mysql_root_password: password
+mysql_db_name: zabbix

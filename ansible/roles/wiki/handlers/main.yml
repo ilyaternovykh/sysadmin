@@ -1,0 +1,39 @@
+#SPDX-License-Identifier: MIT-0
+---
+# handlers file for ./roles/wiki
+- name: Перезапуск nginx
+  become: true
+  service:
+    name: nginx
+    state: restarted
+    enabled: yes
+
+- name: reload systemctl
+  become: true
+  command: systemctl daemon-reload
+
+- name: start pg_backup.service
+  become: true
+  service:
+    name: pg_backup.service
+    state: restarted
+
+- name: start pg_backup.timer
+  become: true
+  service:
+    name: pg_backup.timer
+    state: restarted
+    enabled: yes
+
+- name: start wiki_backup.service
+  become: true
+  service:
+    name: wiki_backup.service
+    state: restarted
+
+- name: start wiki_backup.timer
+  become: true
+  service:
+    name: wiki_backup.timer
+    state: restarted
+    enabled: yes
