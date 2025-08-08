@@ -1,121 +1,121 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # tasks file for ./roles/wiki
-#- name: Запуск "apt-get update"
-#  become: true
-#  ansible.builtin.apt:
-#    update_cache: yes
-#
-#- name: Установка nginx
-#  become: true
-#  apt: 
-#    name: nginx
-#
-#- name: Копирование конфигурационного файла mediawiki
-#  become: true
-#  template:
-#    src: mediawiki.j2
-#    dest: /etc/nginx/sites-available/mediawiki
-#
-#- name: Установка необходимых компонентов
-#  become: true
-#  apt: 
-#    name: 
-#      - php8.1-fpm
-#      - php-pgsql
-#      - php-intl
-#      - php-gd
-#      - php-xml
-#      - php-mbstring
-#
-#- name: Скачивание mediawiki 1.42
-#  get_url:
-#    url: 'https://releases.wikimedia.org/mediawiki/1.42/mediawiki-1.42.1.tar.gz'
-#    dest: '/tmp/mediawiki-1.42.1.tar.gz'
-#
-#- name: Добавление сервисного пользователя
-#  become: true
-#  user:
-#    name: "{{ data_service_user }}"
-#    create_home: no
-#    system: yes
-#    shell: /sbin/nologin
-#
-#- name: Добавление сервисного пользователя wiki
-#  become: true
-#  user:
-#    name: "wikiuser"
-#    create_home: no
-#    system: yes
-#    shell: /sbin/nologin
-#
-#- name: Создание директории mediawiki
-#  become: true
-#  file:
-#    path: '{{ wiki_data_path }}'
-#    state: directory
-#    owner: '{{ data_service_user }}'
-#    group: '{{ data_service_user }}'
-#    mode: '0755'
-#
-#- name: Распаковка mediawiki
-#  become: true
-#  unarchive:
-#    src: '/tmp/mediawiki-1.42.1.tar.gz'
-#    dest: '{{ wiki_data_path }}'
-#    owner: '{{ data_service_user }}'
-#    group: '{{ data_service_user }}'
-#    mode: '0755'
-#    extra_opts:
-#      - --strip-components=1
-#    remote_src: yes
-#
-#- name: Копирование настроек mediawiki
-#  become: true
-#  copy:
-#    src: LocalSettings.php
-#    dest: '{{ wiki_data_path }}'
-#    owner: '{{ data_service_user }}'
-#    group: '{{ data_service_user }}'
-#    mode: '0600'
-#
-#- name: Копирование бд
-#  copy:
-#    src: wiki.dump
-#    dest: /tmp/wiki.dump
-#  when: role == "primary"
-#
-#- name: Enable the new site
-#  become: true
-#  command:
-#    cmd: ln -s /etc/nginx/sites-available/mediawiki /etc/nginx/sites-enabled/
-#  notify: Перезапуск nginx
-#  ignore_errors: true
-#
-#- name: Установка пакетов nfs-common
-#  become: true
-#  apt: 
-#    name: 
-#      - nfs-common
-#
-#- name: Создание дирректории для бэкапов
-#  become: true
-#  file:
-#    path: /mnt/backup
-#    state: directory
-#    mode: '0755'
-#  when: role == "primary"
-#
-#- name: Mount an NFS volume
-#  become: true
-#  ansible.posix.mount:
-#    src: "{{ webservers.vm_s3_local }}:{{ nfs_volumes }}"
-#    path: /mnt/backup
-#    opts: rw,sync,hard
-#    state: mounted
-#    fstype: nfs
-#  when: role == "primary"
-#
+- name: Запуск "apt-get update"
+  become: true
+  ansible.builtin.apt:
+    update_cache: yes
+
+- name: Установка nginx
+  become: true
+  apt: 
+    name: nginx
+
+- name: Копирование конфигурационного файла mediawiki
+  become: true
+  template:
+    src: mediawiki.j2
+    dest: /etc/nginx/sites-available/mediawiki
+
+- name: Установка необходимых компонентов
+  become: true
+  apt: 
+    name: 
+      - php8.1-fpm
+      - php-pgsql
+      - php-intl
+      - php-gd
+      - php-xml
+      - php-mbstring
+
+- name: Скачивание mediawiki 1.42
+  get_url:
+    url: 'https://releases.wikimedia.org/mediawiki/1.42/mediawiki-1.42.1.tar.gz'
+    dest: '/tmp/mediawiki-1.42.1.tar.gz'
+
+- name: Добавление сервисного пользователя
+  become: true
+  user:
+    name: "{{ data_service_user }}"
+    create_home: no
+    system: yes
+    shell: /sbin/nologin
+
+- name: Добавление сервисного пользователя wiki
+  become: true
+  user:
+    name: "wikiuser"
+    create_home: no
+    system: yes
+    shell: /sbin/nologin
+
+- name: Создание директории mediawiki
+  become: true
+  file:
+    path: '{{ wiki_data_path }}'
+    state: directory
+    owner: '{{ data_service_user }}'
+    group: '{{ data_service_user }}'
+    mode: '0755'
+
+- name: Распаковка mediawiki
+  become: true
+  unarchive:
+    src: '/tmp/mediawiki-1.42.1.tar.gz'
+    dest: '{{ wiki_data_path }}'
+    owner: '{{ data_service_user }}'
+    group: '{{ data_service_user }}'
+    mode: '0755'
+    extra_opts:
+      - --strip-components=1
+    remote_src: yes
+
+- name: Копирование настроек mediawiki
+  become: true
+  copy:
+    src: LocalSettings.php
+    dest: '{{ wiki_data_path }}'
+    owner: '{{ data_service_user }}'
+    group: '{{ data_service_user }}'
+    mode: '0600'
+
+- name: Копирование бд
+  copy:
+    src: wiki.dump
+    dest: /tmp/wiki.dump
+  when: role == "primary"
+
+- name: Enable the new site
+  become: true
+  command:
+    cmd: ln -s /etc/nginx/sites-available/mediawiki /etc/nginx/sites-enabled/
+  notify: Перезапуск nginx
+  ignore_errors: true
+
+- name: Установка пакетов nfs-common
+  become: true
+  apt: 
+    name: 
+      - nfs-common
+
+- name: Создание дирректории для бэкапов
+  become: true
+  file:
+    path: /mnt/backup
+    state: directory
+    mode: '0755'
+  when: role == "primary"
+
+- name: Mount an NFS volume
+  become: true
+  ansible.posix.mount:
+    src: "{{ webservers.vm_s3_local }}:{{ nfs_volumes }}"
+    path: /mnt/backup
+    opts: rw,sync,hard
+    state: mounted
+    fstype: nfs
+  when: role == "primary"
+
 - name: Создание дирректории для скриптов
   become: true
   file:
@@ -176,20 +176,20 @@
     - start wiki_backup.service
     - start wiki_backup.timer
 
-#- name: Установка zabbix-agent
-#  become: true
-#  apt: 
-#    name: zabbix-agent
-#
-#- name: Копирование конфигурационного файла zabbix
-#  become: true
-#  template:
-#    src: zabbix_agentd.conf.j2
-#    dest: /etc/zabbix/zabbix_agentd.conf
-#
-#- name: Запуск агента zabbix
-#  become: true
-#  service:
-#    name: zabbix-agent
-#    enabled: yes
-#    state: started
+- name: Установка zabbix-agent
+  become: true
+  apt: 
+    name: zabbix-agent
+
+- name: Копирование конфигурационного файла zabbix
+  become: true
+  template:
+    src: zabbix_agentd.conf.j2
+    dest: /etc/zabbix/zabbix_agentd.conf
+
+- name: Запуск агента zabbix
+  become: true
+  service:
+    name: zabbix-agent
+    enabled: yes
+    state: started

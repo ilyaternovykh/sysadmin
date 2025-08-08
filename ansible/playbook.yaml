@@ -1,25 +1,25 @@
 ---
-#- name: Deploy nginx
-#  hosts: nginx
-#  roles:
-#    - nginx
-#
-#- name: Deploy minio
-#  hosts: minio
-#  roles:
-#    - minio
-#
+- name: Deploy nginx
+  hosts: nginx
+  roles:
+    - nginx
+
+- name: Deploy minio
+  hosts: minio
+  roles:
+    - minio
+
 - name: Deploy mediawiki
   hosts: wiki
   roles:
     - wiki
-#
-#- name: Deploy postgres
-#  hosts: postgres
-#  roles:
-#    - postgres
 
-#- name: Deploy zabbix
-#  hosts: zabbix
-#  roles:
-#    - zabbix
+- name: Deploy postgres
+  hosts: postgres
+  roles:
+    - postgres
+    
+- name: Deploy zabbix
+  hosts: zabbix
+  roles:
+    - zabbix

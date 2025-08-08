@@ -1,14 +1,63 @@
-#!/bin/sh
+#!/bin/bash
+
+# Настройка окружения
 PATH=/etc:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
 
-set -e
-set -u
-
-
+# Переменные
 pathBackup=/mnt/backup/db
-database={{ pg_db_name }}
+database="{{ pg_db_name }}"
+logFile="/mnt/backup/db/log/backup_db.log"
+keepDays=31
+backupName="pgsql_$(date '+%Y-%m-%d').sql.gz"
 
-find $pathBackup \( -name "*-1[^5].*" -o -name "*-[023]?.*" \) -ctime +31 -delete
-pg_dump $database | gzip > $pathBackup/pgsql_$(date "+%Y-%m-%d").sql.gz
+# Функция для логирования
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$logFile"
+}
 
+# Проверка директории для бэкапов
+if [ ! -d "$pathBackup" ]; then
+    log "ОШИБКА: Директория для бэкапов $pathBackup не существует"
+    exit 1
+fi
+
+# Проверка прав на запись
+if [ ! -w "$pathBackup" ]; then
+    log "ОШИБКА: Нет прав на запись в директорию $pathBackup"
+    exit 1
+fi
+
+# Проверка доступности PostgreSQL
+if ! command -v pg_dump &> /dev/null; then
+    log "ОШИБКА: pg_dump не найден. Проверьте установку PostgreSQL"
+    exit 1
+fi
+
+# Очистка старых бэкапов
+log "Начало очистки старых бэкапов (старше $keepDays дней)"
+find "$pathBackup" \( -name "*-1[^5].*" -o -name "*-[023]?.*" \) -ctime +"$keepDays" -delete
+if [ $? -ne 0 ]; then
+    log "ПРЕДУПРЕЖДЕНИЕ: Не удалось очистить старые бэкапы"
+fi
+
+# Создание нового бэкапа
+log "Создание бэкапа базы данных $database"
+pg_dump "$database" | gzip > "$pathBackup/$backupName"
+
+# Проверка успешности создания бэкапа
+if [ $? -eq 0 ]; then
+    # Проверка размера созданного файла
+    backupSize=$(du -h "$pathBackup/$backupName" | cut -f1)
+    log "Бэкап успешно создан: $backupName (размер: $backupSize)"
+else
+    log "ОШИБКА: Не удалось создать бэкап базы данных $database"
+    # Удаляем возможно созданный неполный файл
+    if [ -f "$pathBackup/$backupName" ]; then
+        rm -f "$pathBackup/$backupName"
+        log "Удален неполный бэкап: $backupName"
+    fi
+    exit 1
+fi
+
+log "Процесс бэкапа завершен"
 exit 0

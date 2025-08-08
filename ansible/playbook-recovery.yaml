@@ -1,0 +1,4 @@
+- name: Connect to reserve db
+  hosts: wiki
+  roles:
+    - recovery

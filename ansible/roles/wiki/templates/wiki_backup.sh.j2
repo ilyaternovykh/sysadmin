@@ -1,26 +1,111 @@
 #!/bin/bash
-PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
- 
-source="{{ wiki_data_path }}"
-destination_root="/mnt/backup/wiki"
-fdate=$(date +%Y-%m-%d)
- 
-# Clean old archives
-find ${destination_root}/archive -type f -name "*.tar.gz" -ctime +370 -exec rm -R {} \; 2>&1
- 
-# Daily
-rsync -a --delete-after ${source}/ ${destination_root}/daily/
- 
-# Weekly
-if [[ $(date +%u) -eq 0 ]]
-then
-  rsync -a --delete-after ${source}/ ${destination_root}/weekly/
-fi
- 
-# Archive
-count_last_archives=$(find ${destination_root}/archive/ -name "*.tar.gz" -mtime -30 | wc -l)
-if [[ $count_last_archives -eq 0 ]]
-then
-  cd ${source}
-  tar zcf ${destination_root}/archive/wiki_${fdate}.tar.gz ./*
-fi
+
+# Конфигурация
+SOURCE_DIR="{{ wiki_data_path }}"       # Директория для резервного копирования
+BACKUP_DIR="/mnt/backup/wiki"          # Директория хранения бэкапов
+LOG_FILE="/mnt/backup/wiki/log/backup_$(date +%Y-%m-%d).log"  # Лог-файл с датой
+MAX_LOG_DAYS=90                       # Хранение логов (дней)
+LOCK_FILE="/tmp/backup.lock"          # Файл блокировки
+
+# Функции для обработки ошибок
+error_exit() {
+    echo "$(date +'%Y-%m-%d %H:%M:%S') [ERROR] $1" >> "$LOG_FILE"
+    [ -f "$LOCK_FILE" ] && rm -f "$LOCK_FILE"
+    exit 1
+}
+
+log_info() {
+    echo "$(date +'%Y-%m-%d %H:%M:%S') [INFO] $1" >> "$LOG_FILE"
+}
+
+# Проверка зависимостей
+check_dependencies() {
+    local deps=("tar" "find" "date")
+    for dep in "${deps[@]}"; do
+        if ! command -v "$dep" >/dev/null 2>&1; then
+            error_exit "Необходима утилита: $dep"
+        fi
+    done
+}
+
+# Проверка директорий
+validate_dirs() {
+    [ -d "$SOURCE_DIR" ] || error_exit "Исходная директория не существует: $SOURCE_DIR"
+    mkdir -p "$BACKUP_DIR"/{daily,weekly,monthly} || error_exit "Не удалось создать директории бэкапов"
+    touch "$LOG_FILE" || error_exit "Не удалось создать лог-файл"
+}
+
+# Очистка старых логов
+clean_old_logs() {
+    find "$(dirname "$LOG_FILE")" -name "backup_*.log" -type f -mtime +$MAX_LOG_DAYS -delete 2>/dev/null
+}
+
+# Создание бэкапа
+create_backup() {
+    local backup_type=$1
+    local backup_file="$BACKUP_DIR/$backup_type/$backup_type-$(date +%Y-%m-%d_%H-%M-%S).tar.gz"
+    
+    log_info "Начало создания $backup_type бэкапа..."
+    
+    if ! tar -czf "$backup_file" -C "$(dirname "$SOURCE_DIR")" "$(basename "$SOURCE_DIR")" 2>> "$LOG_FILE"; then
+        error_exit "Ошибка при создании tar-архива"
+    fi
+    
+    # Проверка целостности архива
+    if ! gzip -t "$backup_file" 2>> "$LOG_FILE"; then
+        rm -f "$backup_file"
+        error_exit "Бэкап поврежден: $backup_file"
+    fi
+    
+    log_info "Бэкап успешно создан: $backup_file ($(du -h "$backup_file" | cut -f1))"
+}
+
+# Удаление старых бэкапов
+delete_old_backups() {
+    local backup_type=$1
+    local days_to_keep=$2
+    
+    log_info "Поиск старых $backup_type бэкапов (старше $days_to_keep дней)..."
+    
+    local deleted_files=$(find "$BACKUP_DIR/$backup_type" -name "*.tar.gz" -type f -mtime +$days_to_keep -print -delete | wc -l)
+    
+    log_info "Удалено $deleted_files старых $backup_type бэкапов"
+}
+
+# Основной код
+main() {
+    # Проверка на повторный запуск
+    if [ -f "$LOCK_FILE" ]; then
+        error_exit "Скрипт уже выполняется (lock file: $LOCK_FILE)"
+    fi
+    touch "$LOCK_FILE" || error_exit "Не удалось создать lock-файл"
+    
+    check_dependencies
+    validate_dirs
+    clean_old_logs
+    
+    local DAY_OF_WEEK=$(date +%u)
+    local DAY_OF_MONTH=$(date +%d)
+    
+    # Ежемесячный бэкап (1-го числа)
+    if [ "$DAY_OF_MONTH" -eq 1 ]; then
+        create_backup "monthly"
+        delete_old_backups "monthly" 180  # Храним 6 месяцев
+        
+    # Еженедельный бэкап (каждый понедельник)
+    elif [ "$DAY_OF_WEEK" -eq 1 ]; then
+        create_backup "weekly"
+        delete_old_backups "weekly" 30    # Храним 1 месяц
+        
+    # Ежедневный бэкап
+    else
+        create_backup "daily"
+        delete_old_backups "daily" 7      # Храним 1 неделю
+    fi
+    
+    rm -f "$LOCK_FILE"
+    log_info "Резервное копирование успешно завершено"
+}
+
+# Запуск с обработкой ошибок
+main 2>&1 | tee -a "$LOG_FILE"

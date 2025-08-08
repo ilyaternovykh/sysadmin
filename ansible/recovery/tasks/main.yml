@@ -1,0 +1,23 @@
+#SPDX-License-Identifier: MIT-0
+---
+# tasks file for recovery
+- name: Копирование настроек mediawiki
+  become: true
+  copy:
+    src: LocalSettings.php
+    dest: '{{ wiki_data_path }}'
+    owner: '{{ data_service_user }}'
+    group: '{{ data_service_user }}'
+    mode: '0600'
+
+- name: Остановка postgresql на основном сервере
+  become: true
+  service:
+    name: postgresql
+    state: stopped
+
+- name: Повышение резервной базы в режим основной
+  become: true
+  command:
+    cmd: pg_ctlcluster 14 main promote
+  when: role == "standby"
