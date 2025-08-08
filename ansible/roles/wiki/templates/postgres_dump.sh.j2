@@ -8,7 +8,7 @@ pathBackup=/mnt/backup/db
 database="{{ pg_db_name }}"
 logFile="/mnt/backup/db/log/backup_db.log"
 keepDays=31
-backupName="pgsql_$(date '+%Y-%m-%d').sql.gz"
+backupName="pgsql_$(date '+%Y-%m-%d').dump.gz"
 
 # Функция для логирования
 log() {
